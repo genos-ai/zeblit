@@ -1,0 +1,138 @@
+graph TB
+    %% User Interface Layer
+    subgraph "Browser Client"
+        UI[React UI]
+        Monaco[Monaco Editor]
+        Preview[App Preview]
+        AgentTabs[Agent Tabs]
+        FileExplorer[File Explorer]
+        ChatPanel[Agent Chat Panel]
+    end
+
+    %% API Gateway
+    Gateway[API Gateway<br/>FastAPI]
+
+    %% WebSocket Server
+    WSServer[WebSocket Server<br/>Real-time Updates]
+
+    %% Backend Services
+    subgraph "Backend Services"
+        AuthService[Authentication Service<br/>JWT + SSO]
+        ProjectService[Project Service]
+        ContainerMgr[Container Manager<br/>OrbStack/Docker API]
+        GitService[Git Service]
+        CostTracker[Cost Tracking Service]
+    end
+
+    %% Message Bus
+    MessageBus[Redis Message Bus<br/>Pub/Sub + Task Queues]
+
+    %% AI Agent Pool
+    subgraph "AI Agent System"
+        DevManager[Development Manager<br/>Orchestrator]
+        ProductMgr[Product Manager]
+        DataAnalyst[Data Analyst]
+        Engineer[Senior Engineer]
+        Architect[Architect]
+        PlatformEng[Platform Engineer]
+    end
+
+    %% LLM Providers
+    subgraph "LLM Providers"
+        Claude[Anthropic Claude<br/>Opus & Sonnet]
+        OpenAI[OpenAI<br/>GPT-4]
+        Gemini[Google Gemini<br/>Pro]
+    end
+
+    %% Data Layer
+    subgraph "Data Storage"
+        PostgreSQL[(PostgreSQL<br/>Main Database)]
+        Redis[(Redis<br/>Cache + Sessions)]
+        FileStorage[File Storage<br/>User Code]
+    end
+
+    %% Container Orchestration
+    subgraph "Container Platform"
+        OrbStack[OrbStack<br/>Local Development]
+        UserContainers[User Dev Containers<br/>Python + Node.js]
+        K8s[Kubernetes<br/>Production]
+    end
+
+    %% External Services
+    Resend[Resend<br/>Email Service]
+    Git[Git Repository<br/>Code Storage]
+
+    %% User Interactions
+    User[User/Developer]
+
+    %% Flow Connections
+    User -->|HTTPS| UI
+    UI <-->|REST API| Gateway
+    UI <-->|WebSocket| WSServer
+
+    Gateway --> AuthService
+    Gateway --> ProjectService
+    Gateway --> ContainerMgr
+    Gateway --> GitService
+    Gateway --> CostTracker
+
+    AuthService --> PostgreSQL
+    ProjectService --> PostgreSQL
+    CostTracker --> PostgreSQL
+
+    %% Agent Communication Flow
+    Gateway -->|Publish Task| MessageBus
+    MessageBus <-->|Subscribe/Publish| DevManager
+    DevManager <-->|Coordinate| MessageBus
+    
+    MessageBus <--> ProductMgr
+    MessageBus <--> DataAnalyst
+    MessageBus <--> Engineer
+    MessageBus <--> Architect
+    MessageBus <--> PlatformEng
+
+    %% LLM Integration
+    DevManager --> Claude
+    ProductMgr --> Claude
+    DataAnalyst --> Claude
+    Engineer --> Claude
+    Architect --> Claude
+    PlatformEng --> Claude
+
+    Claude -.->|Fallback| OpenAI
+    Claude -.->|Fallback| Gemini
+
+    %% Container Management
+    ContainerMgr --> OrbStack
+    OrbStack --> UserContainers
+    ContainerMgr -.->|Production| K8s
+
+    %% File Management
+    ProjectService --> FileStorage
+    UserContainers --> FileStorage
+    GitService --> Git
+
+    %% WebSocket Updates
+    WSServer -->|Agent Status| AgentTabs
+    WSServer -->|File Changes| FileExplorer
+    WSServer -->|Build Logs| Preview
+
+    %% Cost Tracking
+    Claude -->|Usage| CostTracker
+    OpenAI -->|Usage| CostTracker
+    Gemini -->|Usage| CostTracker
+
+    %% Email Notifications
+    ProjectService --> Resend
+    CostTracker --> Resend
+
+    %% Cache Layer
+    Gateway --> Redis
+    MessageBus --> Redis
+
+    style UI fill:#e1f5fe
+    style Gateway fill:#fff59d
+    style MessageBus fill:#ffcdd2
+    style Claude fill:#d1c4e9
+    style PostgreSQL fill:#c8e6c9
+    style OrbStack fill:#ffe0b2

@@ -1,0 +1,83 @@
+sequenceDiagram
+    participant User
+    participant UI as React UI
+    participant WS as WebSocket
+    participant API as FastAPI Gateway
+    participant Auth as Auth Service
+    participant MB as Message Bus
+    participant DM as Dev Manager
+    participant PM as Product Mgr
+    participant ENG as Engineer
+    participant ARCH as Architect
+    participant Claude as Claude API
+    participant CM as Container Mgr
+    participant Git as Git Service
+    participant DB as PostgreSQL
+
+    %% Initial Request
+    User->>UI: "Build a login form with validation"
+    UI->>API: POST /api/project/task
+    API->>Auth: Verify JWT token
+    Auth-->>API: Token valid
+    
+    %% Create task and publish to message bus
+    API->>DB: Create task record
+    API->>MB: Publish NEW_TASK event
+    API-->>UI: Task ID: 12345
+    
+    %% WebSocket connection for real-time updates
+    UI->>WS: Subscribe to task:12345
+    
+    %% Development Manager picks up task
+    MB->>DM: NEW_TASK notification
+    DM->>DM: Analyze requirements
+    DM->>Claude: "Analyze: login form with validation"
+    Claude-->>DM: Complexity: medium, needs PM + ENG
+    
+    %% Dev Manager delegates to agents
+    DM->>MB: Publish REQUIREMENTS_ANALYSIS task
+    DM->>MB: Publish CODE_GENERATION task
+    
+    %% Product Manager works on requirements
+    MB->>PM: REQUIREMENTS_ANALYSIS task
+    PM->>Claude: "Create user stories for login form"
+    Claude-->>PM: User stories + acceptance criteria
+    PM->>MB: Publish requirements complete
+    PM->>WS: Update: "Requirements defined"
+    WS-->>UI: Show PM status in tab
+    
+    %% Engineer generates code
+    MB->>ENG: CODE_GENERATION task
+    ENG->>Claude: "Generate React login form with react-hook-form"
+    Claude-->>ENG: Complete component code
+    ENG->>Git: Create feature branch
+    ENG->>Git: Commit LoginForm.tsx
+    ENG->>MB: Publish code complete
+    ENG->>WS: Update: "Login form created"
+    WS-->>UI: Show Engineer's code in tab
+    
+    %% Update container with new code
+    ENG->>CM: Deploy to user container
+    CM->>CM: Copy files to container
+    CM->>CM: Restart dev server
+    CM->>WS: Preview ready
+    WS-->>UI: Enable preview pane
+    
+    %% Architecture review (if needed)
+    DM->>ARCH: Review login implementation
+    ARCH->>Claude: "Review security of login form"
+    Claude-->>ARCH: Suggestions for improvements
+    ARCH->>Git: Create review comments
+    ARCH->>MB: Publish review complete
+    
+    %% Final coordination
+    DM->>DM: Collect all agent outputs
+    DM->>DB: Update task status
+    DM->>WS: Task complete
+    WS-->>UI: Show completed task
+    
+    %% User sees result
+    UI-->>User: Display login form in preview
+    UI-->>User: Show agent conversations in tabs
+
+    Note over User,DB: Entire flow takes ~30-60 seconds

@@ -1,0 +1,519 @@
+# AI Development Platform - Cursor AI Rules
+
+## Project Overview
+This is a browser-based AI development platform (similar to Replit) where users build applications through natural language interactions with a team of 6 specialized AI agents. Each user gets an isolated development container with full IDE capabilities.
+
+## Core Architecture
+
+### Frontend Stack
+- **Framework**: React 18.3.1 with TypeScript 5.6.3
+- **Build Tool**: Vite 6.0.5
+- **UI Framework**: Tailwind CSS 3.4.17 + shadcn/ui components
+- **Code Editor**: Monaco Editor (VS Code engine)
+- **State Management**: TanStack Query (React Query) + Context API
+- **Routing**: Wouter (lightweight alternative to React Router)
+- **WebSockets**: Native WebSocket API for real-time updates
+- **Icons**: Lucide React + React Icons
+
+### Backend Stack
+- **Framework**: FastAPI (Python 3.11+)
+- **Database**: PostgreSQL 16 with SQLAlchemy 2.0 ORM
+- **Cache/Queue**: Redis for pub/sub, caching, and task queues
+- **Task Processing**: Celery for background jobs
+- **Authentication**: JWT tokens with bcrypt password hashing
+- **Session Store**: Redis or PostgreSQL via connect-pg-simple
+
+### AI Integration
+- **Primary LLM**: Anthropic Claude (80% Sonnet 3.5 for routine, 20% Opus 3 for complex)
+- **Fallback LLMs**: OpenAI GPT-4, Google Gemini Pro
+- **Integration**: Direct API calls, no complex frameworks
+- **Model Selection**: Automatic based on task complexity
+
+### Container Platform
+- **Development**: OrbStack on macOS (superior to Docker Desktop)
+- **Migration Path**: Docker → Hybrid → Full Kubernetes
+- **User Containers**: 1-2 CPU cores, 2-4GB RAM, 10GB storage each
+- **Auto-sleep**: After 30 minutes of inactivity
+
+## Project Structure
+```
+zeblit/
+├── frontend/               # React + TypeScript + Vite
+│   ├── src/
+│   │   ├── components/    # UI components (shadcn/ui based)
+│   │   ├── pages/        # Route pages
+│   │   ├── hooks/        # Custom React hooks
+│   │   ├── services/     # API client services
+│   │   ├── lib/          # Utilities and helpers
+│   │   ├── store/        # Global state management
+│   │   └── types/        # TypeScript type definitions
+│   └── package.json
+│
+├── backend/               # Python + FastAPI
+│   ├── api/              # REST API endpoints
+│   ├── agents/           # AI agent implementations
+│   ├── services/         # Business logic layer
+│   ├── models/           # SQLAlchemy database models
+│   ├── schemas/          # Pydantic validation schemas
+│   ├── repositories/     # Data access layer
+│   ├── core/             # Core utilities and config
+│   ├── integrations/     # External API integrations
+│   └── requirements.txt
+│
+├── infrastructure/        # Docker + K8s configs
+│   ├── docker/
+│   ├── kubernetes/
+│   └── docker-compose.yml
+│
+├── shared/               # Shared types/contracts
+│   └── api-spec.yaml     # OpenAPI specification
+│
+└── docs/                 # Documentation (numbered in reading order)
+```
+
+## AI Agent System
+
+### The 6 Agents
+1. **Development Manager** - Orchestrates all agent activities
+2. **Product Manager** - Translates requirements to user stories
+3. **Data Analyst** - Designs schemas and analytics
+4. **Senior Engineer** - Writes core application code
+5. **Architect** - System design and technology selection
+6. **Platform Engineer** - Deployment and infrastructure
+
+### Agent Communication
+- Agents communicate via Redis pub/sub message bus
+- Each agent works on separate Git branches
+- Development Manager coordinates merges
+- Real-time updates stream to UI via WebSockets
+
+## Database Schema (Key Models)
+
+### Core Tables
+- `users` - Authentication and user management
+- `projects` - User applications
+- `tasks` - AI agent task tracking
+- `agents` - Agent configurations
+- `conversations` - Chat history
+- `agent_messages` - Individual messages
+- `cost_tracking` - LLM usage and costs
+- `containers` - Development environments
+- `project_files` - File tracking
+- `git_branches` - Agent branch management
+
+## Code Guidelines
+
+### General Principles
+1. **Simplicity First**: Direct implementations, avoid over-engineering
+2. **Type Safety**: Full TypeScript/Python type hints everywhere
+3. **Error Handling**: Comprehensive error handling with proper logging
+4. **Performance**: Use Redis for all real-time operations
+5. **Security**: JWT auth, container isolation, audit everything
+6. **Cost Conscious**: Track every LLM token, implement smart routing
+
+### Frontend Guidelines
+```typescript
+// Component Structure
+export const ComponentName: React.FC<Props> = ({ prop1, prop2 }) => {
+  // Hooks first
+  const [state, setState] = useState<Type>(initialValue);
+  const { data, isLoading } = useQuery({ queryKey, queryFn });
+  
+  // Event handlers
+  const handleEvent = useCallback(() => {
+    // Implementation
+  }, [dependencies]);
+  
+  // Early returns for loading/error states
+  if (isLoading) return <LoadingSpinner />;
+  
+  // Main render
+  return (
+    <div className="component-class">
+      {/* Content */}
+    </div>
+  );
+};
+```
+
+### Backend Guidelines
+```python
+# FastAPI endpoint structure
+@router.post("/endpoint", response_model=ResponseSchema)
+async def endpoint_name(
+    request: RequestSchema,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> ResponseSchema:
+    """Endpoint description."""
+    try:
+        # Business logic via service layer
+        result = await service.process(request, current_user)
+        return result
+    except BusinessError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+### Database Access Pattern
+```python
+# Repository pattern for data access
+class ProjectRepository:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    
+    async def create(self, **kwargs) -> Project:
+        project = Project(**kwargs)
+        self.db.add(project)
+        await self.db.commit()
+        await self.db.refresh(project)
+        return project
+```
+
+## UI/UX Layout
+```
+┌────────────────────────────────────────────────────────┐
+│ Header: Logo | User Info | Settings | Git Status       │
+├────────────┬─────────────────────┬────────────────────┤
+│ Agent Chat │   Code Editor       │   App Preview      │
+│ (Left)     │   (Monaco)          │   (iframe)         │
+│            │   (Center)          │   (Right)          │
+├────────────┴─────────────────────┴────────────────────┤
+│ Agent Tabs: [DevMgr][PM][Data][Eng][Arch][Platform]   │
+└────────────────────────────────────────────────────────┘
+```
+
+## Console & Error Capture (CRITICAL FEATURE)
+
+### Requirements
+The AI agents MUST be able to see ALL JavaScript errors and console logs from the user's application in real-time. This is essential for AI-powered debugging.
+
+### Implementation Strategy
+
+#### 1. Frontend Console Interceptor
+```typescript
+// console-interceptor.ts
+export class ConsoleInterceptor {
+  private originalConsole = { ...console };
+  private ws: WebSocket;
+
+  constructor(websocketUrl: string, projectId: string) {
+    this.ws = new WebSocket(`${websocketUrl}/console/${projectId}`);
+    this.interceptAllMethods();
+    this.setupErrorHandlers();
+  }
+
+  private interceptAllMethods() {
+    ['log', 'error', 'warn', 'info', 'debug', 'trace'].forEach(method => {
+      console[method] = (...args) => {
+        // Call original method
+        this.originalConsole[method](...args);
+        
+        // Send to backend
+        this.sendToBackend({
+          type: 'console',
+          method,
+          args: this.serializeArgs(args),
+          timestamp: new Date().toISOString(),
+          stackTrace: this.getStackTrace()
+        });
+      };
+    });
+  }
+
+  private setupErrorHandlers() {
+    // Catch unhandled errors
+    window.addEventListener('error', (event) => {
+      this.sendToBackend({
+        type: 'error',
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        error: this.serializeError(event.error),
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Catch unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      this.sendToBackend({
+        type: 'unhandledRejection',
+        reason: this.serializeError(event.reason),
+        promise: String(event.promise),
+        timestamp: new Date().toISOString()
+      });
+    });
+  }
+}
+```
+
+#### 2. Backend Console Service
+```python
+# services/console_service.py
+class ConsoleService:
+    def __init__(self, redis_client):
+        self.redis = redis_client
+        self.max_logs_per_project = 1000
+    
+    async def store_console_log(self, project_id: str, log_data: dict):
+        """Store console log in Redis with sliding window"""
+        key = f"console:{project_id}"
+        
+        # Add to sorted set with timestamp as score
+        await self.redis.zadd(key, {
+            json.dumps(log_data): time.time()
+        })
+        
+        # Keep only last N logs
+        await self.redis.zremrangebyrank(key, 0, -self.max_logs_per_project-1)
+        
+        # Publish to agents
+        await self.redis.publish(f"agent:console:{project_id}", json.dumps(log_data))
+    
+    async def get_recent_logs(self, project_id: str, count: int = 100):
+        """Get recent console logs for AI analysis"""
+        key = f"console:{project_id}"
+        logs = await self.redis.zrevrange(key, 0, count-1)
+        return [json.loads(log) for log in logs]
+```
+
+#### 3. Agent Integration
+```python
+# agents/base_agent.py
+class BaseAgent:
+    async def get_console_context(self, project_id: str):
+        """Get recent console logs and errors for debugging"""
+        logs = await self.console_service.get_recent_logs(project_id)
+        
+        # Separate errors from regular logs
+        errors = [log for log in logs if log['type'] in ['error', 'unhandledRejection']]
+        warnings = [log for log in logs if log.get('method') == 'warn']
+        
+        return {
+            'recent_errors': errors[-10:],  # Last 10 errors
+            'recent_warnings': warnings[-10:],
+            'recent_logs': logs[-50:],  # Last 50 logs
+            'error_count': len(errors),
+            'has_errors': len(errors) > 0
+        }
+```
+
+### Console Display in UI
+- Real-time console output in the preview pane
+- Filterable by log level (error, warn, info, etc.)
+- Searchable console history
+- Click-to-navigate to error source in editor
+- Export console logs for debugging
+
+### AI Debugging Flow
+1. User's app throws an error or logs something
+2. Frontend interceptor captures it immediately
+3. Sends to backend via WebSocket
+4. Backend stores in Redis and publishes to agents
+5. AI agents analyze errors and suggest fixes
+6. Suggested fixes appear in agent chat with context
+
+### Testing Console Capture
+```typescript
+// Test that all console methods are captured
+describe('ConsoleInterceptor', () => {
+  it('should capture all console methods', () => {
+    const interceptor = new ConsoleInterceptor(wsUrl, projectId);
+    console.log('test log');
+    console.error('test error');
+    console.warn('test warning');
+    
+    expect(mockWebSocket.send).toHaveBeenCalledTimes(3);
+  });
+  
+  it('should capture uncaught errors', () => {
+    const interceptor = new ConsoleInterceptor(wsUrl, projectId);
+    const error = new Error('Test error');
+    window.dispatchEvent(new ErrorEvent('error', { error }));
+    
+    expect(mockWebSocket.send).toHaveBeenCalledWith(
+      expect.stringContaining('Test error')
+    );
+  });
+});
+```
+
+## Implementation Priorities
+
+### Current Phase (Choose based on progress)
+- [ ] Phase 1: Core platform with Docker mode
+- [ ] Phase 2: AI integration with hybrid mode
+- [ ] Phase 3: Multi-agent system with full K8s
+- [ ] Phase 4: Production features
+
+### Testing Requirements
+- Minimum 80% code coverage
+- Unit tests for all business logic
+- Integration tests for API endpoints
+- E2E tests for critical user journeys
+- Performance tests with Locust
+
+## File Naming Conventions
+- React components: `PascalCase.tsx` (e.g., `AgentChat.tsx`)
+- Utilities: `camelCase.ts` (e.g., `formatDate.ts`)
+- Python modules: `snake_case.py` (e.g., `user_service.py`)
+- CSS modules: `ComponentName.module.css`
+- Test files: `*.test.ts` or `test_*.py`
+
+## Git Workflow
+- Branch naming: `feature/description`, `fix/description`
+- Commit messages: Conventional commits (feat:, fix:, docs:, etc.)
+- PR required for all changes
+- Each agent works on: `agent/{agent_type}/{feature}`
+
+## Environment Variables
+```bash
+# Backend (.env)
+DATABASE_URL=postgresql://user:pass@localhost/ai_dev_platform
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your-secret-key
+ANTHROPIC_API_KEY=your-anthropic-key
+OPENAI_API_KEY=your-openai-key
+RESEND_API_KEY=your-resend-key
+
+# Frontend (.env)
+VITE_API_URL=http://localhost:8000
+VITE_WS_URL=ws://localhost:8000
+```
+
+## Common Patterns
+
+### API Error Response
+```json
+{
+  "detail": "Error message",
+  "status_code": 400,
+  "error_type": "ValidationError"
+}
+```
+
+### WebSocket Message Format
+```typescript
+interface WSMessage {
+  type: 'agent_update' | 'file_change' | 'task_progress';
+  payload: any;
+  timestamp: string;
+}
+```
+
+### Cost Tracking
+- Track input/output tokens separately
+- Log model used for each request
+- Implement cost limits per user/project
+- Use Sonnet for routine tasks, Opus for complex
+
+## Security Checklist
+- [ ] All endpoints require authentication (except auth routes)
+- [ ] Input validation with Pydantic schemas
+- [ ] SQL injection prevention via SQLAlchemy ORM
+- [ ] XSS prevention in React (automatic)
+- [ ] CORS properly configured
+- [ ] Secrets in environment variables
+- [ ] Container isolation for user code
+- [ ] Audit logging for all actions
+
+## Performance Guidelines
+- Use Redis for all session data
+- Implement pagination for large datasets
+- Lazy load components with React.lazy()
+- Use database indexes on foreign keys
+- Cache LLM responses when appropriate
+- Background jobs for heavy processing
+
+## Deployment Considerations
+- Health check endpoints required
+- Graceful shutdown handling
+- Database migration strategy (Alembic)
+- Container resource limits enforced
+- Monitoring and logging configured
+- Backup strategy for user data
+
+## DO NOT
+- Store sensitive data in localStorage
+- Make direct database queries in API routes
+- Use synchronous operations in async functions
+- Hardcode configuration values
+- Skip error handling
+- Create circular dependencies
+- Use deprecated APIs
+- Implement features not in requirements
+
+## Key Libraries Quick Reference
+- **HTTP Client**: Axios with interceptors
+- **Form Handling**: React Hook Form + Zod
+- **Date Handling**: date-fns
+- **Animation**: Framer Motion
+- **Charts**: Recharts
+- **Python Async**: asyncio with FastAPI
+- **Task Queue**: Celery with Redis broker
+- **File Upload**: Multer for backend
+
+## Remember
+This is an AI-powered development platform where collaboration between AI agents is the core feature. Every design decision should support the goal of making AI-assisted development intuitive and powerful. The platform should feel magical but remain technically sound and secure.
+
+## Cursor AI Prompting Guidelines
+
+When working with Cursor AI on this project, follow these guidelines for best results:
+
+### 1. Reference Specific Agents
+When implementing agent-related features, always specify which agent:
+- "Implement the Development Manager agent's task orchestration logic"
+- "Create the Engineer agent's code generation functionality"
+- "Build the Product Manager's user story creation feature"
+
+### 2. Follow Repository Pattern
+Always request the repository pattern for database operations:
+- "Create UserRepository with the repository pattern for data access"
+- "Implement the project creation method using ProjectRepository"
+- "Use repository pattern for all database queries, no direct ORM calls in routes"
+
+### 3. Request TDD Approach
+Always ask for tests first:
+- "Write unit tests for the authentication service, then implement the service"
+- "Create integration tests for the project endpoints before implementing them"
+- "Follow TDD: write failing tests first, then make them pass"
+
+### 4. Reference UI Layout
+When building frontend components, mention the specific layout section:
+- "Create the AgentChat component for the left sidebar as shown in the UI layout"
+- "Implement the Monaco editor for the center panel following the layout design"
+- "Build the agent tabs for the bottom section of the interface"
+
+### 5. Reference Documentation
+Point to specific numbered documentation files:
+- "Follow the database schema in docs/5. database-schema.py"
+- "Implement according to docs/3. implementation-plan.md Phase 1"
+- "Use the component structure from docs/6. frontend-component-structure.ts"
+
+### Example Prompts for Cursor AI
+
+```
+"Following the repository pattern, create the UserRepository class with methods for user authentication as defined in docs/5. database-schema.py"
+
+"Using TDD, implement the Development Manager agent that orchestrates tasks via Redis pub/sub as described in docs/2. dev-platform-requirements.md"
+
+"Create the AgentChat React component for the left sidebar panel, following the TypeScript patterns in docs/6. frontend-component-structure.ts"
+
+"Set up the FastAPI project structure for Phase 1 as outlined in docs/3. implementation-plan.md, including all the directories and base files"
+
+"Implement WebSocket real-time updates for agent status changes, referencing the data flow in docs/9. data-flow-diagram.mermaid"
+```
+
+### Best Practices for Prompting
+
+1. **Be Specific**: Instead of "create auth", say "implement JWT authentication with bcrypt password hashing following the FastAPI pattern"
+
+2. **Reference Context**: Always mention which phase, which agent, which part of the UI
+
+3. **Request Tests**: Always ask for tests alongside or before implementation
+
+4. **Use Documentation**: Reference the numbered docs files for detailed specifications
+
+5. **Follow Patterns**: Explicitly request established patterns (repository, service layer, etc.)
+
+This approach ensures consistent, well-tested code that follows the project's architecture and standards. 

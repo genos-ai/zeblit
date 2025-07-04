@@ -1,0 +1,97 @@
+graph TB
+    subgraph "Platform Core Services"
+        API[FastAPI Backend]
+        CM[Container Manager]
+        Proxy[Nginx Proxy]
+    end
+
+    subgraph "OrbStack Environment"
+        subgraph "Platform Containers"
+            Backend[Backend Container<br/>FastAPI + Agents]
+            Database[(PostgreSQL Container)]
+            RedisC[Redis Container]
+            Frontend[Frontend Container<br/>React App]
+        end
+
+        subgraph "User Development Containers"
+            subgraph "User 1 Container"
+                U1Code[/workspace/code/]
+                U1Runtime[Python + Node.js]
+                U1Server[Dev Server :3000]
+                U1Git[Git Repo]
+            end
+
+            subgraph "User 2 Container"
+                U2Code[/workspace/code/]
+                U2Runtime[Python + Node.js]
+                U2Server[Dev Server :3000]
+                U2Git[Git Repo]
+            end
+
+            subgraph "User N Container"
+                UNCode[/workspace/code/]
+                UNRuntime[Python + Node.js]
+                UNServer[Dev Server :3000]
+                UNGit[Git Repo]
+            end
+        end
+    end
+
+    subgraph "Persistent Storage"
+        UserFiles[User Files<br/>NFS/S3]
+        GitRepos[Git Repositories]
+        DBData[Database Data]
+    end
+
+    subgraph "Container Lifecycle"
+        Idle{Container Idle?}
+        Sleep[Container Sleep]
+        Wake[Container Wake]
+        Create[Create Container]
+        Destroy[Destroy Container]
+    end
+
+    %% Connections
+    API --> CM
+    CM -->|Create| Create
+    CM -->|Manage| U1Runtime
+    CM -->|Manage| U2Runtime
+    CM -->|Manage| UNRuntime
+
+    %% Proxy routing
+    Proxy -->|user1.orb.local| U1Server
+    Proxy -->|user2.orb.local| U2Server
+    Proxy -->|userN.orb.local| UNServer
+
+    %% Storage mounting
+    UserFiles -.->|Mount| U1Code
+    UserFiles -.->|Mount| U2Code
+    UserFiles -.->|Mount| UNCode
+
+    GitRepos -.->|Clone| U1Git
+    GitRepos -.->|Clone| U2Git
+    GitRepos -.->|Clone| UNGit
+
+    %% Lifecycle flow
+    U1Runtime -->|30min inactive| Idle
+    Idle -->|Yes| Sleep
+    Sleep -->|User returns| Wake
+    Wake --> U1Runtime
+    Idle -->|No| U1Runtime
+
+    %% Database connections
+    Backend --> Database
+    Backend --> RedisC
+
+    %% Resource Limits per Container
+    Note1[CPU: 1-2 cores<br/>RAM: 2-4GB<br/>Disk: 10GB]
+    Note1 -.-> U1Runtime
+    Note1 -.-> U2Runtime
+    Note1 -.-> UNRuntime
+
+    style Backend fill:#e3f2fd
+    style U1Server fill:#e8f5e9
+    style U2Server fill:#e8f5e9
+    style UNServer fill:#e8f5e9
+    style UserFiles fill:#fff3e0
+    style CM fill:#f3e5f5
