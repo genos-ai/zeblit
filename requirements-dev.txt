@@ -18,7 +18,7 @@ safety==3.0.1  # Dependency security check
 types-redis==4.6.0.20240106
 types-passlib==1.7.7.20240106
 types-python-jose==3.3.4.20240106
-types-pyyaml==6.0.12.20240106
+types-pyyaml==6.0.12.20241221
 
 # Documentation
 mkdocs==1.5.3
@@ -36,7 +36,7 @@ httpx-ws==0.4.2  # WebSocket testing support
 locust==2.19.1
 
 # Debugging
-pdb++==0.10.3
+pdbpp==0.10.3
 ipdb==0.13.13
 
 # Code Coverage
