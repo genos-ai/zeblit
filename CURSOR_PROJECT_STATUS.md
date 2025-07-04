@@ -15,6 +15,11 @@ You are working on **Zeblit**, an AI-powered development platform similar to Rep
 - ✅ `README.md` - Project overview and getting started guide
 - ✅ `.gitignore` - Version control ignore patterns
 - ✅ This status file
+- ✅ `requirements.txt` - All Python dependencies
+- ✅ `requirements-dev.txt` - Development dependencies
+- ✅ `requirements-prod.txt` - Production dependencies
+- ✅ `BACKEND_SETUP.md` - Backend installation guide
+- ✅ `env.example` - Environment variables template
 
 ### Documentation (in `docs/` folder)
 All documentation files have been numbered (1-12) in recommended reading order:
