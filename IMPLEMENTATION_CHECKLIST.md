@@ -13,16 +13,16 @@ This is a simplified checklist for quick daily reference. See `docs/3. implement
    - [ ] Install Redis 7+
    - [ ] Install OrbStack (macOS) or Docker
 
-2. **Create Backend Structure**
+2. **Create Backend Structure** ✅
    ```
    src/backend/
-   ├── api/         # FastAPI routes
-   ├── agents/      # AI agent implementations
-   ├── services/    # Business logic
-   ├── models/      # SQLAlchemy models
-   ├── schemas/     # Pydantic schemas
-   ├── core/        # Core utilities
-   └── tests/       # Test files
+   ├── api/         # FastAPI routes ✅
+   ├── agents/      # AI agent implementations ✅
+   ├── services/    # Business logic ✅
+   ├── models/      # SQLAlchemy models ✅
+   ├── schemas/     # Pydantic schemas ✅
+   ├── core/        # Core utilities ✅
+   └── tests/       # Test files ✅
    ```
 
 3. **Initialize Backend**
@@ -84,11 +84,12 @@ Choose 3-5 tasks to complete today:
 5. [x] Implement health check endpoint
 
 ### 🎯 Next Steps
-1. [ ] Set up PostgreSQL and Redis (for full testing)
-2. [ ] Create User model and authentication
-3. [ ] Create API endpoints for authentication
-4. [ ] Implement JWT token system
-5. [ ] Start console/error capture system
+1. [x] Refactor to src/ layout (Python best practices)
+2. [ ] Set up PostgreSQL and Redis (for full testing)
+3. [ ] Create User model and authentication
+4. [ ] Create API endpoints for authentication
+5. [ ] Implement JWT token system
+6. [ ] Start console/error capture system
 
 ### 🎯 This Week's Goals
 
