@@ -516,4 +516,44 @@ Point to specific numbered documentation files:
 
 5. **Follow Patterns**: Explicitly request established patterns (repository, service layer, etc.)
 
-This approach ensures consistent, well-tested code that follows the project's architecture and standards. 
+This approach ensures consistent, well-tested code that follows the project's architecture and standards.
+
+## Implementation Plan Tracking
+
+### Regular Plan Updates
+1. **Before Starting Any Task**: Check `IMPLEMENTATION_CHECKLIST.md` for current phase and priorities
+2. **Reference the Detailed Plan**: Consult `docs/3. implementation-plan.md` for specific task details
+3. **Update Progress**: Mark completed items with [x] in both files
+4. **Add New Discoveries**: If new tasks are identified, add them to the appropriate phase
+5. **Daily Check-In**: Start each coding session by reviewing the checklist
+
+### When Working with Cursor AI
+- Always mention which phase and task you're working on
+- Example: "Implement the User model from Phase 1, following docs/5. database-schema.py"
+- Request plan updates: "Update the implementation plan to mark authentication endpoints as complete"
+- Ask for status: "What's the current progress according to IMPLEMENTATION_CHECKLIST.md?"
+
+### Progress Tracking Pattern
+```
+Before implementing:
+"Check IMPLEMENTATION_CHECKLIST.md - what should I work on next?"
+
+After completing a task:
+"Update the implementation plan to mark [specific task] as complete"
+
+When adding new requirements:
+"Add [new requirement] to Phase X in the implementation plan"
+```
+
+### Implementation Milestones
+- Phase 0: Foundation (90% complete)
+- Phase 1: Backend Core (current)
+- Phase 2: Container Management
+- Phase 3: AI Agents
+- Phase 4: Git Integration
+- Phase 5: Frontend
+- Phase 6: Integration & Testing
+- Phase 7: DevOps & Deployment
+- Phase 8: Production Readiness
+
+Remember: The implementation plan is a living document. Update it as the project evolves! 

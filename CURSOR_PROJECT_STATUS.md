@@ -161,7 +161,9 @@ alembic upgrade head
 - Test everything - aim for >80% coverage
 - Security and performance are critical
 - User experience should feel magical
+- **Always check `IMPLEMENTATION_CHECKLIST.md` before starting work**
+- **Update the implementation plan after completing tasks**
 
 ---
 
-**Note to Cursor AI**: This project is just starting. Begin with Phase 1 tasks from the implementation plan and follow the TDD approach outlined in the testing strategy. 
+**Note to Cursor AI**: This project is just starting. Begin with Phase 1 tasks from the implementation plan and follow the TDD approach outlined in the testing strategy. Always reference and update the implementation plan to track progress. 
