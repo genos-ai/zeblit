@@ -15,7 +15,7 @@ This is a simplified checklist for quick daily reference. See `docs/3. implement
 
 2. **Create Backend Structure**
    ```
-   backend/
+   src/backend/
    ├── api/         # FastAPI routes
    ├── agents/      # AI agent implementations
    ├── services/    # Business logic
@@ -102,10 +102,10 @@ Choose 3-5 tasks to complete today:
 
 ```bash
 # Backend setup
-cd backend
+cd src/backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r ../requirements-dev.txt
+pip install -r ../../requirements-dev.txt
 
 # Database
 docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=password postgres:16

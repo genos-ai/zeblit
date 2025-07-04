@@ -69,7 +69,7 @@ pip install -r requirements-prod.txt
 
 ## Environment Variables
 
-Create a `.env` file in the backend directory:
+Create a `.env` file in the `src/backend` directory:
 
 ```env
 # Database
@@ -103,8 +103,11 @@ DEBUG=true
 ## Quick Start
 
 ```bash
+# Navigate to backend directory
+cd src/backend
+
 # Install dependencies
-pip install -r requirements-dev.txt
+pip install -r ../../requirements-dev.txt
 
 # Set up database
 alembic upgrade head

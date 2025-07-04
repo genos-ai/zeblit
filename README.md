@@ -67,10 +67,10 @@ cd zeblit
 
 2. Set up the backend:
 ```bash
-cd backend
+cd src/backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r ../../requirements-dev.txt
 ```
 
 3. Set up the frontend:
@@ -82,7 +82,7 @@ npm install
 4. Configure environment variables:
 ```bash
 # Copy example env files
-cp backend/.env.example backend/.env
+cp env.example src/backend/.env
 cp frontend/.env.example frontend/.env
 
 # Edit with your API keys and configuration
@@ -91,7 +91,7 @@ cp frontend/.env.example frontend/.env
 5. Start the development servers:
 ```bash
 # Terminal 1: Backend
-cd backend
+cd src/backend
 uvicorn main:app --reload
 
 # Terminal 2: Frontend
@@ -109,12 +109,13 @@ redis-server
 
 ```
 zeblit/
-├── frontend/          # React frontend application
-├── backend/           # FastAPI backend services
-├── infrastructure/    # Docker and Kubernetes configs
-├── shared/           # Shared types and contracts
-├── docs/             # Comprehensive documentation
-└── .cursorrules      # AI coding assistant rules
+├── src/
+│   └── backend/      # FastAPI backend services
+├── frontend/         # React frontend application
+├── infrastructure/   # Docker and Kubernetes configs
+├── shared/          # Shared types and contracts
+├── docs/            # Comprehensive documentation
+└── .cursorrules     # AI coding assistant rules
 ```
 
 ## 🔐 Security
@@ -145,7 +146,7 @@ We follow Test-Driven Development (TDD) with:
 Run tests:
 ```bash
 # Backend tests
-cd backend
+cd src/backend
 pytest
 
 # Frontend tests

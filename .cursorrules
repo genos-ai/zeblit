@@ -38,9 +38,21 @@ This is a browser-based AI development platform (similar to Replit) where users 
 ## Project Structure
 ```
 zeblit/
-├── frontend/               # React + TypeScript + Vite
+├── src/
+│   └── backend/           # Python + FastAPI
+│       ├── api/          # REST API endpoints
+│       ├── agents/       # AI agent implementations
+│       ├── services/     # Business logic layer
+│       ├── models/       # SQLAlchemy database models
+│       ├── schemas/      # Pydantic validation schemas
+│       ├── repositories/ # Data access layer
+│       ├── core/         # Core utilities and config
+│       ├── integrations/ # External API integrations
+│       └── tests/        # Test files
+│
+├── frontend/             # React + TypeScript + Vite
 │   ├── src/
-│   │   ├── components/    # UI components (shadcn/ui based)
+│   │   ├── components/   # UI components (shadcn/ui based)
 │   │   ├── pages/        # Route pages
 │   │   ├── hooks/        # Custom React hooks
 │   │   ├── services/     # API client services
@@ -49,26 +61,15 @@ zeblit/
 │   │   └── types/        # TypeScript type definitions
 │   └── package.json
 │
-├── backend/               # Python + FastAPI
-│   ├── api/              # REST API endpoints
-│   ├── agents/           # AI agent implementations
-│   ├── services/         # Business logic layer
-│   ├── models/           # SQLAlchemy database models
-│   ├── schemas/          # Pydantic validation schemas
-│   ├── repositories/     # Data access layer
-│   ├── core/             # Core utilities and config
-│   ├── integrations/     # External API integrations
-│   └── requirements.txt
-│
-├── infrastructure/        # Docker + K8s configs
+├── infrastructure/       # Docker + K8s configs
 │   ├── docker/
 │   ├── kubernetes/
 │   └── docker-compose.yml
 │
-├── shared/               # Shared types/contracts
-│   └── api-spec.yaml     # OpenAPI specification
+├── shared/              # Shared types/contracts
+│   └── api-spec.yaml    # OpenAPI specification
 │
-└── docs/                 # Documentation (numbered in reading order)
+└── docs/                # Documentation (numbered in reading order)
 ```
 
 ## AI Agent System
