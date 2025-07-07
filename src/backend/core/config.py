@@ -1,66 +1,166 @@
 """
-Configuration settings for the AI Development Platform.
+Application configuration settings.
 
-Uses Pydantic Settings for environment variable management.
+All configuration is loaded from environment variables or .env file.
 """
 
-from pydantic import Field
+import os
+from pathlib import Path
+from typing import Optional
+from functools import lru_cache
+
 from pydantic_settings import BaseSettings
-from typing import List
+from pydantic import Field, field_validator
+
+
+def find_project_root() -> Path:
+    """Find project root by looking for .project_root marker file."""
+    current = Path.cwd()
+    while current != current.parent:
+        if (current / ".project_root").exists():
+            return current
+        current = current.parent
+    return Path.cwd()
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
-    # App Configuration
-    APP_NAME: str = "AI Development Platform"
-    DEBUG: bool = False
-    VERSION: str = "0.1.0"
+    # Application settings
+    APP_NAME: str = Field(default="AI Development Platform", description="Application name")
+    APP_URL: str = Field(default="http://localhost:3000", description="Frontend application URL")
+    API_V1_STR: str = Field(default="/api/v1", description="API version string")
+    DEBUG: bool = Field(default=False, description="Debug mode")
+    ENVIRONMENT: str = Field(default="development", description="Environment name")
     
-    # Security
-    SECRET_KEY: str = Field(..., description="Secret key for JWT signing")
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # CORS settings
+    ALLOWED_ORIGINS: list[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8000"],
+        description="Allowed CORS origins"
+    )
     
-    # Database
-    DATABASE_URL: str = Field(..., description="PostgreSQL database URL")
-    DATABASE_ECHO: bool = False
+    # Database settings
+    DATABASE_URL: str = Field(
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/ai_dev_platform",
+        description="PostgreSQL database URL"
+    )
     
-    # Redis
-    REDIS_URL: str = Field(..., description="Redis connection URL")
+    # JWT settings
+    JWT_SECRET: str = Field(
+        default="your-secret-key-change-this-in-production",
+        description="JWT secret key"
+    )
+    JWT_ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=30,
+        description="Access token expiration in minutes"
+    )
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=7,
+        description="Refresh token expiration in days"
+    )
     
-    # CORS
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # Email settings (Resend)
+    RESEND_API_KEY: str = Field(
+        default="re_test_key",
+        description="Resend API key"
+    )
+    EMAIL_FROM: str = Field(
+        default="noreply@example.com",
+        description="Default from email address"
+    )
+    EMAIL_FROM_NAME: str = Field(
+        default="AI Development Platform",
+        description="Default from name"
+    )
     
-    # LLM API Keys
-    ANTHROPIC_API_KEY: str = Field(default="", description="Anthropic Claude API key")
-    OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
-    GEMINI_API_KEY: str = Field(default="", description="Google Gemini API key")
+    # Redis settings
+    REDIS_URL: str = Field(
+        default="redis://localhost:6379/0",
+        description="Redis connection URL"
+    )
     
-    # Email (Resend)
-    RESEND_API_KEY: str = Field(default="", description="Resend email API key")
-    FROM_EMAIL: str = "noreply@zeblit.ai"
+    # AI API settings
+    ANTHROPIC_API_KEY: str = Field(
+        default="",
+        description="Anthropic API key for Claude"
+    )
+    OPENAI_API_KEY: str = Field(
+        default="",
+        description="OpenAI API key for GPT"
+    )
+    GOOGLE_API_KEY: str = Field(
+        default="",
+        description="Google API key for Gemini"
+    )
     
-    # Container Management
-    CONTAINER_BASE_IMAGE: str = "python:3.12-slim"
-    CONTAINER_TIMEOUT_MINUTES: int = 30
-    MAX_CONTAINERS_PER_USER: int = 3
+    # Model selection settings
+    PRIMARY_MODEL: str = Field(
+        default="claude-3-sonnet-20240229",
+        description="Primary AI model to use"
+    )
+    COMPLEX_MODEL: str = Field(
+        default="claude-3-opus-20240229",
+        description="Model for complex tasks"
+    )
     
-    # File System
-    UPLOAD_MAX_SIZE_MB: int = 100
-    ALLOWED_FILE_TYPES: List[str] = [
-        ".py", ".js", ".ts", ".jsx", ".tsx", ".json", ".yaml", ".yml",
-        ".md", ".txt", ".html", ".css", ".sql", ".env"
-    ]
+    # Container settings
+    CONTAINER_CPU_LIMIT: str = Field(default="2", description="CPU cores per container")
+    CONTAINER_MEMORY_LIMIT: str = Field(default="4g", description="Memory per container")
+    CONTAINER_STORAGE_LIMIT: str = Field(default="10g", description="Storage per container")
+    CONTAINER_IDLE_TIMEOUT_MINUTES: int = Field(
+        default=30,
+        description="Minutes before idle container sleeps"
+    )
     
-    # Cost Tracking
-    MAX_MONTHLY_COST_USD: float = 100.0
-    COST_ALERT_THRESHOLD_USD: float = 80.0
+    # User limits
+    DEFAULT_MONTHLY_TOKEN_LIMIT: int = Field(
+        default=1_000_000,
+        description="Default monthly token limit per user"
+    )
+    DEFAULT_MONTHLY_COST_LIMIT_USD: float = Field(
+        default=50.0,
+        description="Default monthly cost limit per user in USD"
+    )
+    
+    # Logging
+    LOG_LEVEL: str = Field(default="INFO", description="Logging level")
+    LOG_FORMAT: str = Field(
+        default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        description="Log format"
+    )
+    
+    @field_validator("DATABASE_URL")
+    def validate_database_url(cls, v: str) -> str:
+        """Ensure database URL uses asyncpg for async operations."""
+        if "postgresql://" in v and "+asyncpg" not in v:
+            v = v.replace("postgresql://", "postgresql+asyncpg://")
+        return v
+    
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string or list."""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",")]
+        return v
+    
+    @property
+    def sync_database_url(self) -> str:
+        """Get synchronous database URL for Alembic."""
+        return self.DATABASE_URL.replace("+asyncpg", "")
     
     class Config:
-        env_file = ".env"
+        """Pydantic config."""
+        env_file = str(find_project_root() / ".env")
         case_sensitive = True
+        extra = "ignore"
 
 
-# Global settings instance
-settings = Settings() 
+@lru_cache()
+def get_settings() -> Settings:
+    """Get cached settings instance."""
+    return Settings()
+
+
+# Create settings instance
+settings = get_settings() 

@@ -58,8 +58,8 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
         }
     except Exception as e:
         services["redis"] = {
-            "status": "unhealthy",
-            "message": f"Redis connection failed: {str(e)}"
+            "status": "unavailable",
+            "message": f"Redis not available: {str(e)}"
         }
     
     # Check LLM API availability (basic check)
@@ -73,8 +73,8 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
             "status": "configured" if settings.OPENAI_API_KEY else "not_configured"
         },
         "gemini": {
-            "configured": bool(settings.GEMINI_API_KEY),
-            "status": "configured" if settings.GEMINI_API_KEY else "not_configured"
+            "configured": bool(settings.GOOGLE_API_KEY),
+            "status": "configured" if settings.GOOGLE_API_KEY else "not_configured"
         }
     }
     

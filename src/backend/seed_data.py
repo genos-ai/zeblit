@@ -1,0 +1,437 @@
+#!/usr/bin/env python3
+"""
+Seed data script for AI Development Platform.
+
+Populates the database with essential data:
+- 6 AI agents with proper configurations
+- Project templates for common frameworks
+- Default system configurations
+"""
+
+import asyncio
+import asyncpg
+import argparse
+import logging
+from datetime import datetime
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+
+from core.config import settings
+from models import Agent, ProjectTemplate
+from models.enums import AgentType, ModelProvider
+
+
+# Set up argument parser
+parser = argparse.ArgumentParser(description='Seed the AI Development Platform database')
+parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
+parser.add_argument('--debug', '-d', action='store_true', help='Enable debug output')
+args = parser.parse_args()
+
+# Configure logging based on arguments
+if args.debug:
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+elif args.verbose:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+else:
+    logging.basicConfig(level=logging.WARNING, format='%(levelname)s - %(message)s')
+
+logger = logging.getLogger(__name__)
+
+
+async def create_ai_agents(session: AsyncSession):
+    """Create the 6 AI agents with proper configurations."""
+    
+    agents_data = [
+        {
+            "agent_type": AgentType.DEV_MANAGER,
+            "name": "Development Manager",
+            "display_name": "DevOps Manager",
+            "description": "Orchestrates development workflow and coordinates between all agents",
+            "system_prompt": """You are the Development Manager for an AI development platform. Your role is to:
+
+1. Analyze user requirements and break them down into actionable tasks
+2. Coordinate work between different AI agents (PM, Engineer, Architect, etc.)
+3. Manage project timelines and priorities
+4. Resolve conflicts between agents and merge code changes
+5. Ensure quality and consistency across the development process
+
+You have access to all project files, git branches, and can communicate with other agents.
+Always maintain a high-level view of the project and ensure tasks are properly distributed.""",
+            "capabilities": ["task_orchestration", "agent_coordination", "code_review", "merge_management", "project_planning"],
+            "default_model": "claude-3-5-sonnet",
+            "fallback_models": ["gpt-4", "gemini-pro"],
+            "temperature": 0.3,
+            "max_tokens": 4000,
+            "specializations": ["project_management", "devops", "ci_cd", "git_workflow"],
+            "tools_available": ["git", "code_review", "task_management", "agent_communication"],
+            "file_types_handled": ["*"],  # Can handle all file types
+            "can_create_subtasks": True,
+            "can_modify_files": True,
+        },
+        {
+            "agent_type": AgentType.PRODUCT_MANAGER,
+            "name": "Product Manager",
+            "display_name": "Product Manager",
+            "description": "Translates user requirements into detailed user stories and technical specifications",
+            "system_prompt": """You are the Product Manager for an AI development platform. Your role is to:
+
+1. Understand user requirements and translate them into clear user stories
+2. Define acceptance criteria and success metrics
+3. Create wireframes and user experience flows
+4. Prioritize features based on user value and technical feasibility
+5. Ensure the product meets user needs and business objectives
+
+Focus on user experience, feature clarity, and business value. Work closely with the Engineer and Architect to ensure feasibility.""",
+            "capabilities": ["requirement_analysis", "user_story_creation", "wireframing", "feature_prioritization", "ux_design"],
+            "default_model": "claude-3-5-sonnet",
+            "fallback_models": ["gpt-4", "gemini-pro"],
+            "temperature": 0.4,
+            "max_tokens": 3500,
+            "specializations": ["product_strategy", "user_experience", "requirements_analysis", "agile_methodology"],
+            "tools_available": ["wireframing", "user_research", "analytics", "feature_planning"],
+            "file_types_handled": [".md", ".json", ".yaml"],
+            "can_create_subtasks": True,
+            "can_modify_files": False,
+        },
+        {
+            "agent_type": AgentType.DATA_ANALYST,
+            "name": "Data Analyst",
+            "display_name": "Data Analyst",
+            "description": "Designs database schemas, analyzes data patterns, and creates analytics solutions",
+            "system_prompt": """You are the Data Analyst for an AI development platform. Your role is to:
+
+1. Design efficient database schemas and data models
+2. Create queries for data analysis and reporting
+3. Optimize database performance and indexing
+4. Design ETL pipelines and data transformations
+5. Provide insights through data visualization and analytics
+
+Focus on data integrity, performance, and scalability. Ensure data models support current and future needs.""",
+            "capabilities": ["database_design", "query_optimization", "data_modeling", "analytics", "etl_design"],
+            "default_model": "claude-3-5-sonnet",
+            "fallback_models": ["gpt-4", "gemini-pro"],
+            "temperature": 0.2,
+            "max_tokens": 4000,
+            "specializations": ["database_design", "sql", "data_warehousing", "business_intelligence"],
+            "tools_available": ["sql_editor", "database_tools", "analytics_tools", "visualization"],
+            "file_types_handled": [".sql", ".py", ".json", ".csv", ".yaml"],
+            "can_create_subtasks": True,
+            "can_modify_files": True,
+        },
+        {
+            "agent_type": AgentType.ENGINEER,
+            "name": "Senior Engineer",
+            "display_name": "Senior Engineer",
+            "description": "Writes high-quality code, implements features, and ensures technical excellence",
+            "system_prompt": """You are the Senior Engineer for an AI development platform. Your role is to:
+
+1. Write clean, efficient, and maintainable code
+2. Implement features according to specifications
+3. Create comprehensive tests for all code
+4. Debug issues and optimize performance
+5. Follow best practices and coding standards
+
+Focus on code quality, testing, and maintainability. Ensure all code is production-ready and well-documented.""",
+            "capabilities": ["code_generation", "testing", "debugging", "refactoring", "performance_optimization"],
+            "default_model": "claude-3-5-sonnet",
+            "fallback_models": ["gpt-4", "gemini-pro"],
+            "temperature": 0.2,
+            "max_tokens": 6000,
+            "specializations": ["full_stack_development", "testing", "debugging", "code_review"],
+            "tools_available": ["code_editor", "debugger", "testing_framework", "profiler"],
+            "file_types_handled": [".py", ".js", ".ts", ".jsx", ".tsx", ".css", ".html", ".json"],
+            "can_create_subtasks": True,
+            "can_modify_files": True,
+            "can_execute_code": True,
+        },
+        {
+            "agent_type": AgentType.ARCHITECT,
+            "name": "System Architect",
+            "display_name": "System Architect",
+            "description": "Designs system architecture, selects technologies, and ensures scalability",
+            "system_prompt": """You are the System Architect for an AI development platform. Your role is to:
+
+1. Design scalable and maintainable system architectures
+2. Select appropriate technologies and frameworks
+3. Define integration patterns and APIs
+4. Ensure security, performance, and scalability
+5. Create technical documentation and diagrams
+
+Focus on long-term maintainability, scalability, and best practices. Consider future growth and changing requirements.""",
+            "capabilities": ["system_design", "technology_selection", "api_design", "security_design", "scalability_planning"],
+            "default_model": "claude-3-5-sonnet",
+            "fallback_models": ["gpt-4", "gemini-pro"],
+            "temperature": 0.3,
+            "max_tokens": 5000,
+            "specializations": ["system_architecture", "microservices", "api_design", "cloud_infrastructure"],
+            "tools_available": ["diagramming", "architecture_tools", "documentation", "design_patterns"],
+            "file_types_handled": [".md", ".yaml", ".json", ".py", ".ts"],
+            "can_create_subtasks": True,
+            "can_modify_files": True,
+        },
+        {
+            "agent_type": AgentType.PLATFORM_ENGINEER,
+            "name": "Platform Engineer",
+            "display_name": "Platform Engineer",
+            "description": "Manages deployment, infrastructure, monitoring, and DevOps processes",
+            "system_prompt": """You are the Platform Engineer for an AI development platform. Your role is to:
+
+1. Set up and manage deployment pipelines
+2. Configure infrastructure and container orchestration
+3. Implement monitoring, logging, and alerting
+4. Ensure security and compliance
+5. Optimize for performance and cost
+
+Focus on automation, reliability, and operational excellence. Ensure the platform is secure, scalable, and cost-effective.""",
+            "capabilities": ["deployment", "infrastructure", "monitoring", "security", "automation"],
+            "default_model": "claude-3-5-sonnet",
+            "fallback_models": ["gpt-4", "gemini-pro"],
+            "temperature": 0.2,
+            "max_tokens": 4000,
+            "specializations": ["devops", "kubernetes", "ci_cd", "monitoring", "security"],
+            "tools_available": ["docker", "kubernetes", "monitoring_tools", "ci_cd_tools"],
+            "file_types_handled": [".yaml", ".yml", ".json", ".sh", ".py", "Dockerfile"],
+            "can_create_subtasks": True,
+            "can_modify_files": True,
+        }
+    ]
+    
+    created_agents = []
+    for agent_data in agents_data:
+        agent = Agent(**agent_data)
+        session.add(agent)
+        created_agents.append(agent)
+        if args.verbose:
+            print(f"✅ Created agent: {agent.name} ({agent.agent_type})")
+        logger.info(f"Created agent: {agent.name} ({agent.agent_type})")
+    
+    await session.commit()
+    logger.debug(f"Successfully committed {len(created_agents)} agents to database")
+    return created_agents
+
+
+async def create_project_templates(session: AsyncSession):
+    """Create project templates for common frameworks."""
+    
+    templates_data = [
+        {
+            "name": "react-typescript-vite",
+            "display_name": "React + TypeScript + Vite",
+            "description": "Modern React application with TypeScript, Vite, and Tailwind CSS",
+            "category": "frontend",
+            "subcategory": "react",
+            "template_type": "react-typescript",
+            "framework": "React",
+            "language": "TypeScript",
+            "difficulty_level": "intermediate",
+            "estimated_setup_time": 3,
+            "is_official": True,
+            "is_featured": True,
+            "framework_config": {
+                "react_version": "18.3.1",
+                "typescript_version": "5.6.3",
+                "vite_version": "6.0.5"
+            },
+            "dependencies": {
+                "react": "^18.3.1",
+                "react-dom": "^18.3.1",
+                "typescript": "^5.6.3",
+                "@vitejs/plugin-react": "^4.3.4",
+                "tailwindcss": "^3.4.17"
+            },
+            "build_command": "npm run build",
+            "start_command": "npm run dev",
+            "install_command": "npm install",
+            "test_command": "npm run test",
+            "tags": ["react", "typescript", "vite", "tailwind", "frontend"],
+            "features": ["hot_reload", "typescript", "css_framework", "modern_tooling"],
+            "prerequisites": ["node_js", "npm"],
+        },
+        {
+            "name": "python-fastapi",
+            "display_name": "FastAPI + Python",
+            "description": "High-performance Python API with FastAPI, SQLAlchemy, and Pydantic",
+            "category": "backend",
+            "subcategory": "api",
+            "template_type": "python-fastapi",
+            "framework": "FastAPI",
+            "language": "Python",
+            "difficulty_level": "intermediate",
+            "estimated_setup_time": 5,
+            "is_official": True,
+            "is_featured": True,
+            "framework_config": {
+                "python_version": "3.12+",
+                "fastapi_version": "0.115.6",
+                "sqlalchemy_version": "2.0.36"
+            },
+            "dependencies": {
+                "fastapi": "^0.115.6",
+                "uvicorn": "^0.34.0",
+                "sqlalchemy": "^2.0.36",
+                "pydantic": "^2.10.4",
+                "alembic": "^1.16.2"
+            },
+            "build_command": "python -m build",
+            "start_command": "uvicorn main:app --reload",
+            "install_command": "pip install -r requirements.txt",
+            "test_command": "pytest",
+            "tags": ["python", "fastapi", "api", "backend", "async"],
+            "features": ["async_support", "auto_docs", "type_validation", "database_orm"],
+            "prerequisites": ["python_3_12", "pip"],
+        },
+        {
+            "name": "nextjs-fullstack",
+            "display_name": "Next.js Fullstack",
+            "description": "Full-stack Next.js application with API routes and database",
+            "category": "fullstack",
+            "subcategory": "nextjs",
+            "template_type": "nextjs-typescript",
+            "framework": "Next.js",
+            "language": "TypeScript",
+            "difficulty_level": "advanced",
+            "estimated_setup_time": 8,
+            "is_official": True,
+            "is_featured": True,
+            "framework_config": {
+                "nextjs_version": "15.1.0",
+                "typescript_version": "5.6.3",
+                "prisma_version": "6.1.0"
+            },
+            "dependencies": {
+                "next": "^15.1.0",
+                "react": "^18.3.1",
+                "typescript": "^5.6.3",
+                "prisma": "^6.1.0",
+                "@prisma/client": "^6.1.0"
+            },
+            "build_command": "npm run build",
+            "start_command": "npm run dev",
+            "install_command": "npm install",
+            "test_command": "npm run test",
+            "tags": ["nextjs", "react", "typescript", "fullstack", "ssr"],
+            "features": ["ssr", "api_routes", "database", "authentication", "seo_optimized"],
+            "prerequisites": ["node_js", "npm", "database"],
+        },
+        {
+            "name": "vue-typescript",
+            "display_name": "Vue 3 + TypeScript",
+            "description": "Modern Vue 3 application with TypeScript and Composition API",
+            "category": "frontend",
+            "subcategory": "vue",
+            "template_type": "vue-typescript",
+            "framework": "Vue",
+            "language": "TypeScript",
+            "difficulty_level": "intermediate",
+            "estimated_setup_time": 4,
+            "is_official": True,
+            "framework_config": {
+                "vue_version": "3.5.13",
+                "typescript_version": "5.6.3",
+                "vite_version": "6.0.5"
+            },
+            "dependencies": {
+                "vue": "^3.5.13",
+                "typescript": "^5.6.3",
+                "@vitejs/plugin-vue": "^5.2.1",
+                "vue-router": "^4.5.0"
+            },
+            "build_command": "npm run build",
+            "start_command": "npm run dev",
+            "install_command": "npm install",
+            "test_command": "npm run test",
+            "tags": ["vue", "typescript", "composition_api", "frontend"],
+            "features": ["composition_api", "router", "typescript", "modern_tooling"],
+            "prerequisites": ["node_js", "npm"],
+        },
+        {
+            "name": "python-django",
+            "display_name": "Django + Python",
+            "description": "Full-featured Django web application with admin panel and ORM",
+            "category": "fullstack",
+            "subcategory": "django",
+            "template_type": "python-django",
+            "framework": "Django",
+            "language": "Python",
+            "difficulty_level": "intermediate",
+            "estimated_setup_time": 6,
+            "is_official": True,
+            "framework_config": {
+                "python_version": "3.12+",
+                "django_version": "5.1.5"
+            },
+            "dependencies": {
+                "django": "^5.1.5",
+                "psycopg2-binary": "^2.9.10",
+                "django-rest-framework": "^3.15.2",
+                "celery": "^5.4.0"
+            },
+            "build_command": "python manage.py collectstatic",
+            "start_command": "python manage.py runserver",
+            "install_command": "pip install -r requirements.txt",
+            "test_command": "python manage.py test",
+            "tags": ["python", "django", "fullstack", "admin_panel", "orm"],
+            "features": ["admin_panel", "orm", "authentication", "rest_api", "background_tasks"],
+            "prerequisites": ["python_3_12", "pip", "database"],
+        }
+    ]
+    
+    created_templates = []
+    for template_data in templates_data:
+        template = ProjectTemplate(**template_data)
+        session.add(template)
+        created_templates.append(template)
+        if args.verbose:
+            print(f"✅ Created template: {template.name} ({template.framework})")
+        logger.info(f"Created template: {template.name} ({template.framework})")
+    
+    await session.commit()
+    logger.debug(f"Successfully committed {len(created_templates)} templates to database")
+    return created_templates
+
+
+async def main():
+    """Main function to seed the database."""
+    if args.verbose or args.debug:
+        print("🌱 Starting database seeding...")
+    logger.info("Starting database seeding process")
+    
+    # Create async engine and session
+    logger.debug(f"Creating database engine with URL: {settings.DATABASE_URL}")
+    engine = create_async_engine(settings.DATABASE_URL, echo=args.debug)
+    async_session_factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    async with async_session_factory() as session:
+        try:
+            # Create AI agents
+            if args.verbose:
+                print("\n📋 Creating AI agents...")
+            logger.info("Creating AI agents")
+            agents = await create_ai_agents(session)
+            
+            # Create project templates
+            if args.verbose:
+                print("\n🏗️ Creating project templates...")
+            logger.info("Creating project templates")
+            templates = await create_project_templates(session)
+            
+            if args.verbose or args.debug:
+                print(f"\n✅ Seeding completed successfully!")
+                print(f"   - Created {len(agents)} AI agents")
+                print(f"   - Created {len(templates)} project templates")
+            logger.info(f"Seeding completed: {len(agents)} agents, {len(templates)} templates")
+            
+        except Exception as e:
+            error_msg = f"Error during seeding: {e}"
+            if args.verbose or args.debug:
+                print(f"❌ {error_msg}")
+            logger.error(error_msg, exc_info=args.debug)
+            await session.rollback()
+            raise
+        finally:
+            await engine.dispose()
+            logger.debug("Database engine disposed")
+
+
+if __name__ == "__main__":
+    asyncio.run(main()) 

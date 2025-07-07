@@ -29,7 +29,7 @@ This platform provides a complete AI-powered development team in your browser:
 - TanStack Query for state management
 
 ### Backend
-- FastAPI (Python 3.11+)
+- FastAPI (Python 3.12+)
 - PostgreSQL 16 + SQLAlchemy
 - Redis for real-time features
 - Celery for background tasks
@@ -52,7 +52,8 @@ All documentation is in the `docs/` folder, numbered in recommended reading orde
 
 ### Prerequisites
 - Node.js 20.18.1 LTS
-- Python 3.11+
+- Python 3.12+
+- uv (Python package manager)
 - PostgreSQL 16
 - Redis 7+
 - OrbStack (macOS) or Docker
@@ -67,10 +68,13 @@ cd zeblit
 
 2. Set up the backend:
 ```bash
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 cd src/backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r ../../requirements-dev.txt
+uv venv --python 3.12
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -r ../../requirements.txt
 ```
 
 3. Set up the frontend:

@@ -132,9 +132,9 @@ Create `.env` files with:
 ```bash
 # Backend development
 cd src/backend
-python -m venv venv
-source venv/bin/activate
-pip install fastapi sqlalchemy alembic redis celery
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -r ../../requirements.txt
 uvicorn main:app --reload
 
 # Frontend development

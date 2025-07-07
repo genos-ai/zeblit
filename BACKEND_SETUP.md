@@ -1,46 +1,38 @@
 # Backend Setup Guide
 
-## Requirements Files
+## Requirements File
 
-This project includes three requirements files:
-
-1. **`requirements.txt`** - All dependencies (development + production)
-2. **`requirements-dev.txt`** - Development-only dependencies (includes requirements.txt)
-3. **`requirements-prod.txt`** - Production-only dependencies
+This project uses a single **`requirements.txt`** file that includes all dependencies (development + production) using the latest compatible versions.
 
 ## Python Version
 
-This project requires **Python 3.11+**
+This project requires **Python 3.12+** and **uv**
 
 ## Installation
 
-### For Development
+### Install uv (if not already installed)
 
 ```bash
-# Create virtual environment
-python -m venv venv
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Or on macOS:
+brew install uv
+```
+
+### Installation
+
+```bash
+# Create virtual environment with uv
+uv venv --python 3.12
 
 # Activate virtual environment
 # On macOS/Linux:
-source venv/bin/activate
+source .venv/bin/activate
 # On Windows:
-venv\Scripts\activate
+.venv\Scripts\activate
 
-# Install all development dependencies
-pip install -r requirements-dev.txt
-```
-
-### For Production
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-source venv/bin/activate
-
-# Install production dependencies only
-pip install -r requirements-prod.txt
+# Install all dependencies
+uv pip install -r requirements.txt
 ```
 
 ## Key Dependencies
@@ -61,11 +53,14 @@ pip install -r requirements-prod.txt
 - **Celery** - Background task processing
 - **PostgreSQL** - Primary database (via asyncpg)
 
-### Development Tools
-- **pytest** - Testing framework
+### Development & Testing Tools
+- **pytest** - Testing framework with async support
 - **black** - Code formatting
 - **mypy** - Type checking
 - **pre-commit** - Git hooks
+- **flake8** - Code linting
+- **bandit** - Security scanning
+- **safety** - Dependency security checks
 
 ## Environment Variables
 
@@ -107,7 +102,7 @@ DEBUG=true
 cd src/backend
 
 # Install dependencies
-pip install -r ../../requirements-dev.txt
+uv pip install -r ../../requirements.txt
 
 # Set up database
 alembic upgrade head
@@ -130,7 +125,7 @@ mypy .
 For containerized development:
 
 ```dockerfile
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 

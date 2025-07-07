@@ -16,7 +16,7 @@ This is a browser-based AI development platform (similar to Replit) where users 
 - **Icons**: Lucide React + React Icons
 
 ### Backend Stack
-- **Framework**: FastAPI (Python 3.11+)
+- **Framework**: FastAPI (Python 3.12+)
 - **Database**: PostgreSQL 16 with SQLAlchemy 2.0 ORM
 - **Cache/Queue**: Redis for pub/sub, caching, and task queues
 - **Task Processing**: Celery for background jobs

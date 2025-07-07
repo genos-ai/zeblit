@@ -8,7 +8,7 @@ This is a simplified checklist for quick daily reference. See `docs/3. implement
 
 1. **Development Environment**
    - [ ] Install Node.js 20.18.1 LTS
-   - [ ] Install Python 3.11+
+   - [ ] Install Python 3.12+
    - [ ] Install PostgreSQL 16
    - [ ] Install Redis 7+
    - [ ] Install OrbStack (macOS) or Docker
@@ -104,9 +104,9 @@ Choose 3-5 tasks to complete today:
 ```bash
 # Backend setup
 cd src/backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r ../../requirements-dev.txt
+uv venv --python 3.12
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+uv pip install -r ../../requirements.txt
 
 # Database
 docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=password postgres:16
