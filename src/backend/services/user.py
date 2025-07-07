@@ -11,10 +11,11 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import NotFoundError, ValidationError, AuthorizationError
-from models import User
-from models.enums import UserRole
-from repositories import UserRepository, ProjectRepository
+from src.backend.core.exceptions import NotFoundError, ValidationError, AuthorizationError, EmailAlreadyExistsError, UsernameAlreadyExistsError
+from src.backend.models import User
+from src.backend.models.enums import UserRole
+from src.backend.repositories import UserRepository, ProjectRepository
+from src.backend.schemas.user import UserCreate, UserUpdate, UserStats
 
 logger = logging.getLogger(__name__)
 
@@ -391,4 +392,181 @@ class UserService:
         if success:
             logger.info(f"Deleted user: {user_id}")
         
-        return success 
+        return success
+    
+    async def create_user(self, user_create: UserCreate) -> User:
+        """
+        Create a new user.
+        
+        Args:
+            user_create: User creation data
+            
+        Returns:
+            Created user
+            
+        Raises:
+            EmailAlreadyExistsError: If email already exists
+            UsernameAlreadyExistsError: If username already exists
+        """
+        # Check if email exists
+        existing = await self.user_repo.get_by_email(user_create.email)
+        if existing:
+            raise EmailAlreadyExistsError()
+        
+        # Check if username exists
+        existing = await self.user_repo.get_by_username(user_create.username)
+        if existing:
+            raise UsernameAlreadyExistsError()
+        
+        # Hash password
+        from src.backend.services.auth import pwd_context
+        hashed_password = pwd_context.hash(user_create.password)
+        
+        # Create user
+        user_data = user_create.model_dump(exclude={"password"})
+        user = await self.user_repo.create_user(
+            email=user_data["email"],
+            username=user_data["username"],
+            password_hash=hashed_password,
+            full_name=user_data.get("full_name"),
+            role=user_data.get("role", UserRole.USER)
+        )
+        
+        logger.info(f"Created new user: {user.email}")
+        return user
+    
+    async def get_user_by_id(self, user_id: UUID) -> User:
+        """
+        Get user by ID.
+        
+        Args:
+            user_id: User's ID
+            
+        Returns:
+            User instance
+            
+        Raises:
+            NotFoundError: If user not found
+        """
+        return await self.get_user(user_id)
+    
+    async def update_user(self, user_id: UUID, user_update: UserUpdate) -> User:
+        """
+        Update user information.
+        
+        Args:
+            user_id: User's ID
+            user_update: Update data
+            
+        Returns:
+            Updated user
+            
+        Raises:
+            EmailAlreadyExistsError: If email already exists
+            UsernameAlreadyExistsError: If username already exists
+        """
+        # Get current user
+        user = await self.get_user(user_id)
+        
+        update_data = user_update.model_dump(exclude_unset=True)
+        
+        # Check email uniqueness if updating
+        if "email" in update_data and update_data["email"] != user.email:
+            existing = await self.user_repo.get_by_email(update_data["email"])
+            if existing:
+                raise EmailAlreadyExistsError()
+        
+        # Check username uniqueness if updating
+        if "username" in update_data and update_data["username"] != user.username:
+            existing = await self.user_repo.get_by_username(update_data["username"])
+            if existing:
+                raise UsernameAlreadyExistsError()
+        
+        # Update user
+        user = await self.user_repo.update(user_id, **update_data)
+        
+        logger.info(f"Updated user: {user.email}")
+        return user
+    
+    async def update_password(self, user_id: UUID, new_password: str) -> User:
+        """
+        Update user's password.
+        
+        Args:
+            user_id: User's ID
+            new_password: New password (plain text)
+            
+        Returns:
+            Updated user
+        """
+        from src.backend.services.auth import pwd_context
+        hashed_password = pwd_context.hash(new_password)
+        
+        user = await self.user_repo.update_password(user_id, hashed_password)
+        if not user:
+            raise NotFoundError("User", user_id)
+        
+        logger.info(f"Password updated for user: {user.email}")
+        return user
+    
+    async def list_users(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        is_active: Optional[bool] = None
+    ) -> List[User]:
+        """
+        List users with optional filtering.
+        
+        Args:
+            skip: Number to skip
+            limit: Maximum to return
+            is_active: Filter by active status
+            
+        Returns:
+            List of users
+        """
+        filters = {}
+        if is_active is not None:
+            filters["is_active"] = is_active
+        
+        return await self.user_repo.get_multi(
+            skip=skip,
+            limit=limit,
+            **filters
+        )
+    
+    async def get_user_stats(self, user_id: UUID) -> UserStats:
+        """
+        Get user statistics.
+        
+        Args:
+            user_id: User's ID
+            
+        Returns:
+            User statistics
+        """
+        user = await self.get_user(user_id)
+        
+        # Get project counts
+        owned_projects = await self.project_repo.count({"owner_id": user_id})
+        
+        # TODO: Get real task counts from task repository
+        task_count = 0
+        completed_tasks = 0
+        
+        # Calculate remaining tokens and cost
+        tokens_remaining = max(0, user.monthly_token_limit - user.current_month_tokens)
+        cost_remaining = max(0, user.monthly_cost_limit - user.current_month_cost)
+        
+        return UserStats(
+            user_id=user_id,
+            tokens_used_this_month=user.current_month_tokens,
+            cost_this_month=user.current_month_cost,
+            tokens_remaining=tokens_remaining,
+            cost_remaining=cost_remaining,
+            project_count=owned_projects,
+            active_projects=owned_projects,  # TODO: Filter by active status
+            task_count=task_count,
+            completed_tasks=completed_tasks
+        ) 

@@ -13,11 +13,11 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import settings
-from core.exceptions import AuthenticationError, AuthorizationError, ValidationError
-from models import User
-from models.enums import UserRole
-from repositories import UserRepository
+from src.backend.core.config import settings
+from src.backend.core.exceptions import AuthenticationError, AuthorizationError, ValidationError
+from src.backend.models.user import User
+from src.backend.models.enums import UserRole
+from src.backend.repositories.user import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -164,25 +164,48 @@ class AuthService:
         self,
         email: str,
         password: str
-    ) -> Optional[User]:
+    ) -> Dict[str, str]:
         """
-        Authenticate a user by email and password.
+        Authenticate a user by email and password and return tokens.
         
         Args:
             email: User's email
             password: Plain text password
             
         Returns:
-            User if authentication successful, None otherwise
+            Dict with access_token and refresh_token
+            
+        Raises:
+            AuthenticationError: If authentication fails
         """
-        user = await self.user_repo.authenticate(email)
+        # Get user from repository
+        user = await self.user_repo.get_by_email(email)
         if not user:
-            return None
+            raise AuthenticationError("Invalid email or password")
         
-        if not self.verify_password(password, user.password_hash):
-            return None
+        # Verify password
+        if not self.verify_password(password, user.hashed_password):
+            raise AuthenticationError("Invalid email or password")
         
-        return user
+        # Check if user is active
+        if not user.is_active:
+            raise AuthenticationError("User account is inactive")
+        
+        # Update last login
+        await self.user_repo.update(user.id, {"last_login": datetime.now(timezone.utc)})
+        
+        # Generate tokens
+        access_token = self.create_access_token(
+            user_id=user.id,
+            email=user.email,
+            role=user.role,
+        )
+        refresh_token = self.create_refresh_token(user_id=user.id)
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token
+        }
     
     async def register_user(
         self,
@@ -274,7 +297,7 @@ class AuthService:
     async def refresh_access_token(
         self,
         refresh_token: str
-    ) -> Tuple[User, str]:
+    ) -> Dict[str, str]:
         """
         Refresh an access token using a refresh token.
         
@@ -282,7 +305,7 @@ class AuthService:
             refresh_token: JWT refresh token
             
         Returns:
-            Tuple of (user, new_access_token)
+            Dict with new access_token and refresh_token
             
         Raises:
             AuthenticationError: If refresh token is invalid
@@ -306,7 +329,13 @@ class AuthService:
             role=user.role
         )
         
-        return user, access_token
+        # Generate new refresh token
+        new_refresh_token = self.create_refresh_token(user_id=user.id)
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": new_refresh_token
+        }
     
     async def get_current_user(self, token: str) -> User:
         """
@@ -364,7 +393,7 @@ class AuthService:
             raise AuthenticationError("User not found")
         
         # Verify current password
-        if not self.verify_password(current_password, user.password_hash):
+        if not self.verify_password(current_password, user.hashed_password):
             raise AuthenticationError("Current password is incorrect")
         
         # Validate new password

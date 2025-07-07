@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # Application settings
+    PROJECT_NAME: str = Field(default="AI Development Platform", description="Project name")
+    VERSION: str = Field(default="0.1.0", description="Application version")
     APP_NAME: str = Field(default="AI Development Platform", description="Application name")
     APP_URL: str = Field(default="http://localhost:3000", description="Frontend application URL")
     API_V1_STR: str = Field(default="/api/v1", description="API version string")
@@ -43,6 +45,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field(
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/ai_dev_platform",
         description="PostgreSQL database URL"
+    )
+    DATABASE_ECHO: bool = Field(
+        default=False,
+        description="Echo SQL queries (for debugging)"
     )
     
     # JWT settings

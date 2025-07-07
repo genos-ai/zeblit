@@ -9,7 +9,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 from typing import AsyncGenerator
 
-from core.config import settings
+from src.backend.core.config import settings
 
 
 class Base(DeclarativeBase):
