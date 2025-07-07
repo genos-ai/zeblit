@@ -58,7 +58,9 @@ async def create_ai_agents(session: AsyncSession):
 You have access to all project files, git branches, and can communicate with other agents.
 Always maintain a high-level view of the project and ensure tasks are properly distributed.""",
             "capabilities": ["task_orchestration", "agent_coordination", "code_review", "merge_management", "project_planning"],
-            "default_model": "claude-3-5-sonnet",
+            "load_balancing_weight": 1.0,
+            "default_model": "claude-sonnet-4",
+            "available_models": ["claude-sonnet-4", "claude-opus-4", "gpt-4", "gpt-3.5-turbo"],
             "fallback_models": ["gpt-4", "gemini-pro"],
             "temperature": 0.3,
             "max_tokens": 4000,
@@ -83,7 +85,9 @@ Always maintain a high-level view of the project and ensure tasks are properly d
 
 Focus on user experience, feature clarity, and business value. Work closely with the Engineer and Architect to ensure feasibility.""",
             "capabilities": ["requirement_analysis", "user_story_creation", "wireframing", "feature_prioritization", "ux_design"],
-            "default_model": "claude-3-5-sonnet",
+            "load_balancing_weight": 1.0,
+            "default_model": "claude-sonnet-4",
+            "available_models": ["claude-sonnet-4", "claude-opus-4", "gpt-4", "gpt-3.5-turbo"],
             "fallback_models": ["gpt-4", "gemini-pro"],
             "temperature": 0.4,
             "max_tokens": 3500,
@@ -92,6 +96,7 @@ Focus on user experience, feature clarity, and business value. Work closely with
             "file_types_handled": [".md", ".json", ".yaml"],
             "can_create_subtasks": True,
             "can_modify_files": False,
+            "performance_metrics": {"avg_response_time": 1.8, "success_rate": 0.97},
         },
         {
             "agent_type": AgentType.DATA_ANALYST,
@@ -108,7 +113,9 @@ Focus on user experience, feature clarity, and business value. Work closely with
 
 Focus on data integrity, performance, and scalability. Ensure data models support current and future needs.""",
             "capabilities": ["database_design", "query_optimization", "data_modeling", "analytics", "etl_design"],
-            "default_model": "claude-3-5-sonnet",
+            "load_balancing_weight": 1.0,
+            "default_model": "claude-sonnet-4",
+            "available_models": ["claude-sonnet-4", "claude-opus-4", "gpt-4", "gpt-3.5-turbo"],
             "fallback_models": ["gpt-4", "gemini-pro"],
             "temperature": 0.2,
             "max_tokens": 4000,
@@ -117,6 +124,7 @@ Focus on data integrity, performance, and scalability. Ensure data models suppor
             "file_types_handled": [".sql", ".py", ".json", ".csv", ".yaml"],
             "can_create_subtasks": True,
             "can_modify_files": True,
+            "performance_metrics": {"avg_response_time": 1.2, "success_rate": 0.98},
         },
         {
             "agent_type": AgentType.ENGINEER,
@@ -133,7 +141,9 @@ Focus on data integrity, performance, and scalability. Ensure data models suppor
 
 Focus on code quality, testing, and maintainability. Ensure all code is production-ready and well-documented.""",
             "capabilities": ["code_generation", "testing", "debugging", "refactoring", "performance_optimization"],
-            "default_model": "claude-3-5-sonnet",
+            "load_balancing_weight": 1.0,
+            "default_model": "claude-sonnet-4",
+            "available_models": ["claude-sonnet-4", "claude-opus-4", "gpt-4", "gpt-3.5-turbo"],
             "fallback_models": ["gpt-4", "gemini-pro"],
             "temperature": 0.2,
             "max_tokens": 6000,
@@ -143,6 +153,7 @@ Focus on code quality, testing, and maintainability. Ensure all code is producti
             "can_create_subtasks": True,
             "can_modify_files": True,
             "can_execute_code": True,
+            "performance_metrics": {"avg_response_time": 1.5, "success_rate": 0.99},
         },
         {
             "agent_type": AgentType.ARCHITECT,
@@ -159,7 +170,9 @@ Focus on code quality, testing, and maintainability. Ensure all code is producti
 
 Focus on long-term maintainability, scalability, and best practices. Consider future growth and changing requirements.""",
             "capabilities": ["system_design", "technology_selection", "api_design", "security_design", "scalability_planning"],
-            "default_model": "claude-3-5-sonnet",
+            "load_balancing_weight": 1.0,
+            "default_model": "claude-sonnet-4",
+            "available_models": ["claude-sonnet-4", "claude-opus-4", "gpt-4", "gpt-3.5-turbo"],
             "fallback_models": ["gpt-4", "gemini-pro"],
             "temperature": 0.3,
             "max_tokens": 5000,
@@ -168,6 +181,7 @@ Focus on long-term maintainability, scalability, and best practices. Consider fu
             "file_types_handled": [".md", ".yaml", ".json", ".py", ".ts"],
             "can_create_subtasks": True,
             "can_modify_files": True,
+            "performance_metrics": {"avg_response_time": 2.0, "success_rate": 0.96},
         },
         {
             "agent_type": AgentType.PLATFORM_ENGINEER,
@@ -184,7 +198,9 @@ Focus on long-term maintainability, scalability, and best practices. Consider fu
 
 Focus on automation, reliability, and operational excellence. Ensure the platform is secure, scalable, and cost-effective.""",
             "capabilities": ["deployment", "infrastructure", "monitoring", "security", "automation"],
-            "default_model": "claude-3-5-sonnet",
+            "load_balancing_weight": 1.0,
+            "default_model": "claude-sonnet-4",
+            "available_models": ["claude-sonnet-4", "claude-opus-4", "gpt-4", "gpt-3.5-turbo"],
             "fallback_models": ["gpt-4", "gemini-pro"],
             "temperature": 0.2,
             "max_tokens": 4000,
@@ -193,6 +209,7 @@ Focus on automation, reliability, and operational excellence. Ensure the platfor
             "file_types_handled": [".yaml", ".yml", ".json", ".sh", ".py", "Dockerfile"],
             "can_create_subtasks": True,
             "can_modify_files": True,
+            "performance_metrics": {"avg_response_time": 1.6, "success_rate": 0.98},
         }
     ]
     

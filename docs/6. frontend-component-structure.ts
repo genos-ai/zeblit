@@ -207,7 +207,7 @@ interface AgentChatProps {
 
 export const AgentChat: React.FC<AgentChatProps> = ({ projectId }) => {
   const [input, setInput] = useState('');
-  const [model, setModel] = useState('claude-3-5-sonnet');
+  const [model, setModel] = useState('claude-sonnet-4');
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const { messages, sendMessage, isLoading } = useChat(projectId);
@@ -247,15 +247,15 @@ export const AgentChat: React.FC<AgentChatProps> = ({ projectId }) => {
     <div className="flex flex-col h-full">
       {/* Model Selector */}
       <div className="p-4 border-b">
-        <Select value={model} onValueChange={setModel}>
-          <SelectTrigger>
-            <SelectValue />
+        <Select defaultValue="claude-sonnet-4">
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="claude-3-5-sonnet">Claude 3.5 Sonnet</SelectItem>
-            <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
+            <SelectItem value="claude-sonnet-4">Claude 4 Sonnet</SelectItem>
+            <SelectItem value="claude-opus-4">Claude 4 Opus</SelectItem>
             <SelectItem value="gpt-4">GPT-4</SelectItem>
-            <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
+            <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
           </SelectContent>
         </Select>
       </div>

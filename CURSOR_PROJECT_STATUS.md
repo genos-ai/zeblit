@@ -163,6 +163,18 @@ alembic upgrade head
 - **Always check `IMPLEMENTATION_CHECKLIST.md` before starting work**
 - **Update the implementation plan after completing tasks**
 
+## Recent Updates
+- **2024-01-XX**: Updated Claude model references from version 3 to version 4
+  - Updated `.cursorrules` to reference Claude 4 Sonnet and Claude 4 Opus
+  - Added AI model configuration to `src/backend/core/config.py` with proper model names
+  - Added `CLAUDE_API_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY` to `env.example`
+  - Updated implementation plan to specify Claude 4 model selection strategy
+- **2024-01-09**: Fixed self-referential relationship definitions in database models
+  - Task model: parent-child hierarchy
+  - AgentMessage model: threaded message replies
+  - ProjectFile model: file versioning relationships
+- **2024-01-09**: Added missing relationships in models to resolve mapper configuration errors
+
 ---
 
 **Note to Cursor AI**: This project is just starting. Begin with Phase 1 tasks from the implementation plan and follow the TDD approach outlined in the testing strategy. Always reference and update the implementation plan to track progress. 

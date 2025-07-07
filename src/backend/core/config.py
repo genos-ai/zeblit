@@ -96,11 +96,11 @@ class Settings(BaseSettings):
     
     # Model selection settings
     PRIMARY_MODEL: str = Field(
-        default="claude-3-sonnet-20240229",
+        default="claude-sonnet-4-20250514",
         description="Primary AI model to use"
     )
     COMPLEX_MODEL: str = Field(
-        default="claude-3-opus-20240229",
+        default="claude-opus-4-20250514",
         description="Model for complex tasks"
     )
     
@@ -128,6 +128,28 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = Field(
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         description="Log format"
+    )
+    
+    # AI Model configurations
+    CLAUDE_DEFAULT_MODEL: str = Field(
+        default="claude-sonnet-4-20250514",
+        description="Default Claude model for routine tasks (Claude 4 Sonnet)"
+    )
+    CLAUDE_COMPLEX_MODEL: str = Field(
+        default="claude-opus-4-20250514", 
+        description="Claude model for complex tasks (Claude 4 Opus)"
+    )
+    CLAUDE_API_KEY: str = Field(
+        default=os.getenv("CLAUDE_API_KEY", ""),
+        description="Anthropic Claude API key"
+    )
+    OPENAI_API_KEY: str = Field(
+        default=os.getenv("OPENAI_API_KEY", ""),
+        description="OpenAI API key for fallback"
+    )
+    GEMINI_API_KEY: str = Field(
+        default=os.getenv("GEMINI_API_KEY", ""),
+        description="Google Gemini API key for fallback"
     )
     
     @field_validator("DATABASE_URL")

@@ -24,7 +24,7 @@ This is a browser-based AI development platform (similar to Replit) where users 
 - **Session Store**: Redis or PostgreSQL via connect-pg-simple
 
 ### AI Integration
-- **Primary LLM**: Anthropic Claude (80% Sonnet 3.5 for routine, 20% Opus 3 for complex)
+- **Primary LLM**: Anthropic Claude (80% Claude 4 Sonnet for routine, 20% Claude 4 Opus for complex)
 - **Fallback LLMs**: OpenAI GPT-4, Google Gemini Pro
 - **Integration**: Direct API calls, no complex frameworks
 - **Model Selection**: Automatic based on task complexity
@@ -406,7 +406,7 @@ interface WSMessage {
 - Track input/output tokens separately
 - Log model used for each request
 - Implement cost limits per user/project
-- Use Sonnet for routine tasks, Opus for complex
+- Use Claude 4 Sonnet for routine tasks, Claude 4 Opus for complex
 
 ## Security Checklist
 - [ ] All endpoints require authentication (except auth routes)

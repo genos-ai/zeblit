@@ -205,7 +205,7 @@ class Agent(Base):
     # Configuration
     system_prompt = Column(Text, nullable=False)
     capabilities = Column(ARRAY(String), default=[])
-    default_model = Column(String(100), default='claude-3-5-sonnet')
+    default_model = Column(String(100), default='claude-sonnet-4')
     temperature = Column(Float, default=0.2)
     max_tokens = Column(Integer, default=4000)
     
@@ -493,6 +493,8 @@ class AuditLog(Base):
         Index('idx_audit_resource', 'resource_type', 'resource_id'),
     )
 
+
+
 # Database initialization helper
 def create_indexes(engine):
     """Create additional indexes that might be needed"""
@@ -511,8 +513,8 @@ def validate_email(email: str) -> str:
 def validate_model_name(model: str) -> str:
     """Validate LLM model names"""
     valid_models = [
-        'claude-3-opus-20240229',
-        'claude-3-5-sonnet-20241022',
+        'claude-opus-4-20250514',
+        'claude-sonnet-4-20250514',
         'gpt-4',
         'gpt-3.5-turbo',
         'gemini-pro'
