@@ -8,7 +8,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Any, AsyncIterator
+from typing import Dict, List, Optional, Any, AsyncIterator, Tuple
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -28,6 +28,9 @@ from src.backend.models.task import Task, TaskStatus
 from src.backend.models.conversation import Conversation
 from src.backend.models.agent_message import AgentMessage as AgentMessageModel
 from src.backend.config.logging_config import get_logger, log_operation
+from src.backend.services.task import TaskService
+from src.backend.services.conversation import ConversationService
+from src.backend.services.git import GitService
 
 logger = get_logger(__name__)
 
@@ -386,6 +389,145 @@ class BaseAgent(ABC):
         
         await redis_client.publish(channel, message_data)
     
+    async def _commit_work(
+        self,
+        task: Task,
+        message: str,
+        files: Optional[List[str]] = None
+    ) -> Optional[str]:
+        """
+        Commit work to Git repository.
+        
+        Args:
+            task: Task being worked on
+            message: Commit message
+            files: Specific files to commit
+            
+        Returns:
+            Commit hash if successful
+        """
+        if not task.project_id:
+            return None
+            
+        try:
+            commit_hash = await self.git_service.commit_changes(
+                project_id=task.project_id,
+                message=message,
+                files=files,
+                agent_type=self.agent_type
+            )
+            
+            logger.info(
+                "Agent committed work",
+                agent_type=self.agent_type.value,
+                task_id=str(task.id),
+                commit_hash=commit_hash
+            )
+            
+            return commit_hash
+            
+        except Exception as e:
+            logger.error(
+                "Failed to commit work",
+                agent_type=self.agent_type.value,
+                task_id=str(task.id),
+                error=str(e)
+            )
+            return None
+    
+    async def _create_work_branch(self, task: Task) -> Optional[str]:
+        """
+        Create a Git branch for working on a task.
+        
+        Args:
+            task: Task to work on
+            
+        Returns:
+            Branch name if successful
+        """
+        if not task.project_id:
+            return None
+            
+        try:
+            branch_name = await self.git_service.create_agent_branch(
+                project_id=task.project_id,
+                agent_type=self.agent_type,
+                task_id=task.id
+            )
+            
+            logger.info(
+                "Agent created work branch",
+                agent_type=self.agent_type.value,
+                task_id=str(task.id),
+                branch_name=branch_name
+            )
+            
+            return branch_name
+            
+        except Exception as e:
+            logger.error(
+                "Failed to create work branch",
+                agent_type=self.agent_type.value,
+                task_id=str(task.id),
+                error=str(e)
+            )
+            return None
+    
+    async def _merge_work_branch(
+        self,
+        task: Task,
+        branch_name: str,
+        target_branch: str = "main"
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        Merge work branch back to target branch.
+        
+        Args:
+            task: Task that was worked on
+            branch_name: Branch to merge
+            target_branch: Target branch (default: main)
+            
+        Returns:
+            Tuple of (success, merge_commit_hash or error_message)
+        """
+        if not task.project_id:
+            return False, "No project ID"
+            
+        try:
+            success, result = await self.git_service.merge_branch(
+                project_id=task.project_id,
+                source_branch=branch_name,
+                target_branch=target_branch
+            )
+            
+            if success:
+                logger.info(
+                    "Agent merged work branch",
+                    agent_type=self.agent_type.value,
+                    task_id=str(task.id),
+                    branch_name=branch_name,
+                    merge_commit=result
+                )
+            else:
+                logger.warning(
+                    "Agent merge conflict",
+                    agent_type=self.agent_type.value,
+                    task_id=str(task.id),
+                    branch_name=branch_name,
+                    conflict=result
+                )
+            
+            return success, result
+            
+        except Exception as e:
+            logger.error(
+                "Failed to merge work branch",
+                agent_type=self.agent_type.value,
+                task_id=str(task.id),
+                error=str(e)
+            )
+            return False, str(e)
+
     def __repr__(self) -> str:
         """String representation of the agent."""
         return (

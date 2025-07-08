@@ -12,6 +12,7 @@ from src.backend.api.v1.endpoints.console import router as console_router
 from src.backend.api.v1.endpoints.containers import router as containers_router
 from src.backend.api.v1.endpoints.files import router as files_router
 from src.backend.api.v1.endpoints.orchestration import router as orchestration_router
+from src.backend.api.v1.endpoints.git import router as git_router
 
 __all__ = [
     "auth_router",
@@ -25,5 +26,6 @@ __all__ = [
     "console_router",
     "containers_router",
     "files_router",
-    "orchestration_router"
+    "orchestration_router",
+    "git_router"
 ] 

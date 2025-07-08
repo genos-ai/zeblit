@@ -11,6 +11,7 @@ from src.backend.services.container import ContainerService
 from src.backend.services.console import ConsoleService
 from src.backend.services.file import FileService
 from src.backend.services.orchestration import OrchestrationService
+from src.backend.services.git import GitService
 
 __all__ = [
     "UserService",
@@ -23,5 +24,6 @@ __all__ = [
     "ContainerService",
     "ConsoleService",
     "FileService",
-    "OrchestrationService"
+    "OrchestrationService",
+    "GitService"
 ] 

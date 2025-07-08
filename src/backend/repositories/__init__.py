@@ -1,28 +1,25 @@
-"""
-Repository pattern implementation for the AI Development Platform.
+"""Repository layer exports."""
 
-This package provides a clean data access layer with repositories
-for each model, implementing common CRUD operations and model-specific logic.
-"""
-
-from .base import BaseRepository
-from .user import UserRepository
-from .project import ProjectRepository
-from .agent import AgentRepository
-from .conversation import ConversationRepository
-from .task import TaskRepository
-from .project_file import ProjectFileRepository
-from .container import ContainerRepository
-from .cost_tracking import CostTrackingRepository
+from src.backend.repositories.base import BaseRepository
+from src.backend.repositories.user import UserRepository
+from src.backend.repositories.project import ProjectRepository
+from src.backend.repositories.agent import AgentRepository
+from src.backend.repositories.conversation import ConversationRepository
+from src.backend.repositories.task import TaskRepository
+from src.backend.repositories.container import ContainerRepository
+from src.backend.repositories.project_file import ProjectFileRepository
+from src.backend.repositories.cost_tracking import CostTrackingRepository
+from src.backend.repositories.git_branch import GitBranchRepository
 
 __all__ = [
     "BaseRepository",
-    "UserRepository", 
+    "UserRepository",
     "ProjectRepository",
     "AgentRepository",
     "ConversationRepository",
     "TaskRepository",
-    "ProjectFileRepository",
     "ContainerRepository",
+    "ProjectFileRepository",
     "CostTrackingRepository",
+    "GitBranchRepository"
 ] 

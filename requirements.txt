@@ -38,6 +38,9 @@ flower  # Celery monitoring tool
 # Container management
 docker
 
+# Git integration
+GitPython
+
 # File handling
 python-magic
 aiofiles

@@ -14,7 +14,8 @@ from src.backend.api.v1.endpoints import (
     console_router,
     containers_router,
     files_router,
-    orchestration_router
+    orchestration_router,
+    git_router
 )
 
 api_router = APIRouter()
@@ -31,6 +32,7 @@ api_router.include_router(console_router)
 api_router.include_router(containers_router)
 api_router.include_router(files_router)
 api_router.include_router(orchestration_router)
+api_router.include_router(git_router)
 api_router.include_router(websocket_router)
 
 # Future routers will be added here:
