@@ -1,27 +1,27 @@
-"""
-Service layer for the AI Development Platform.
+"""Service layer exports."""
 
-This package provides business logic services that coordinate
-between repositories, handle transactions, and integrate with
-external services.
-"""
-
-from .auth import AuthService
-from .user import UserService
-from .project import ProjectService
-from .agent import AgentService
-from .conversation import ConversationService
-from .task import TaskService
-from .email import EmailService
-from .file import FileService
+from src.backend.services.user import UserService
+from src.backend.services.auth import AuthService
+from src.backend.services.project import ProjectService
+from src.backend.services.email import EmailService
+from src.backend.services.agent import AgentService
+from src.backend.services.conversation import ConversationService
+from src.backend.services.task import TaskService
+from src.backend.services.container import ContainerService
+from src.backend.services.console import ConsoleService
+from src.backend.services.file import FileService
+from src.backend.services.orchestration import OrchestrationService
 
 __all__ = [
-    "AuthService",
     "UserService",
+    "AuthService", 
     "ProjectService",
+    "EmailService",
     "AgentService",
     "ConversationService",
     "TaskService",
-    "EmailService",
+    "ContainerService",
+    "ConsoleService",
     "FileService",
+    "OrchestrationService"
 ] 

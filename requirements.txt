@@ -30,6 +30,11 @@ aiohttp
 # AI/LLM providers
 anthropic
 
+# Task queue
+celery
+celery[redis]
+flower  # Celery monitoring tool
+
 # Container management
 docker
 

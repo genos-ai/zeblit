@@ -1,32 +1,29 @@
-"""
-API v1 endpoints.
+"""API v1 endpoints."""
 
-*Version: 1.1.0*
-*Author: AI Development Platform Team*
-
-## Changelog
-- 1.1.0 (2024-01-XX): Added file management endpoints.
-- 1.0.0 (2024-01-XX): Initial endpoints module.
-"""
-
-from .health import router as health_router
-from .auth import router as auth_router
-from .users import router as users_router
-from .projects import router as projects_router
-from .agents import router as agents_router
-from .websocket import router as websocket_router
-from .console import router as console_router
-from .containers import router as containers_router
-from .files import router as files_router
+from src.backend.api.v1.endpoints.auth import router as auth_router
+from src.backend.api.v1.endpoints.users import router as users_router
+from src.backend.api.v1.endpoints.projects import router as projects_router
+from src.backend.api.v1.endpoints.agents import router as agents_router
+from src.backend.api.v1.endpoints.health import router as health_router
+from src.backend.api.v1.endpoints.conversations import router as conversations_router
+from src.backend.api.v1.endpoints.tasks import router as tasks_router
+from src.backend.api.v1.endpoints.websocket import router as websocket_router
+from src.backend.api.v1.endpoints.console import router as console_router
+from src.backend.api.v1.endpoints.containers import router as containers_router
+from src.backend.api.v1.endpoints.files import router as files_router
+from src.backend.api.v1.endpoints.orchestration import router as orchestration_router
 
 __all__ = [
-    "health_router",
-    "auth_router", 
+    "auth_router",
     "users_router",
     "projects_router",
     "agents_router",
+    "health_router",
+    "conversations_router",
+    "tasks_router",
     "websocket_router",
     "console_router",
     "containers_router",
     "files_router",
+    "orchestration_router"
 ] 
