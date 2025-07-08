@@ -1,20 +1,20 @@
 """
-Project service for project management business logic.
+Project service for business logic related to projects.
 
-Handles project creation, collaboration, templates, and project-related operations.
+*Version: 1.0.0*
+*Author: AI Development Platform Team*
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Dict, List, Any, Optional, Tuple
 from uuid import UUID
-from datetime import datetime, timezone
 import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import NotFoundError, ValidationError, AuthorizationError
-from models import Project, User, ProjectTemplate
-from models.enums import ProjectStatus
-from repositories import ProjectRepository, UserRepository, TaskRepository
+from src.backend.core.exceptions import NotFoundError, ValidationError, AuthorizationError
+from src.backend.models import Project, User, ProjectTemplate
+from src.backend.models.enums import ProjectStatus
+from src.backend.repositories import ProjectRepository, UserRepository, TaskRepository
 
 logger = logging.getLogger(__name__)
 
@@ -520,9 +520,9 @@ class ProjectService:
         if project.is_public:
             return True
         
-        # Check if user is collaborator
+        # Check collaborator status
         collaborators = await self.project_repo.get_collaborators(project.id)
-        return any(c["user"].id == user_id for c in collaborators)
+        return any(c["user_id"] == user_id for c in collaborators)
     
     async def _user_can_write_project(
         self,
@@ -536,8 +536,8 @@ class ProjectService:
         
         # Check collaborator permissions
         collaborators = await self.project_repo.get_collaborators(project.id)
-        for collab in collaborators:
-            if collab["user"].id == user_id:
-                return collab["can_write"]
+        for c in collaborators:
+            if c["user_id"] == user_id:
+                return c.get("can_write", False)
         
         return False 

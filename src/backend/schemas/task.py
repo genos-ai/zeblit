@@ -31,17 +31,16 @@ class TaskCreate(TaskBase):
     parent_task_id: Optional[UUID] = Field(None, description="Parent task ID for subtasks")
     assigned_agents: List[str] = Field(default_factory=list, description="Agent types to assign")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "project_id": "123e4567-e89b-12d3-a456-426614174000",
-                "title": "Implement user authentication",
-                "description": "Add JWT-based authentication to the API",
-                "task_type": "feature",
-                "complexity": "medium",
-                "assigned_agents": ["engineer", "architect"]
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "project_id": "123e4567-e89b-12d3-a456-426614174000",
+            "title": "Implement user authentication",
+            "description": "Add JWT-based authentication to the API",
+            "task_type": "feature",
+            "complexity": "medium",
+            "assigned_agents": ["engineer", "architect"]
         }
+    })
 
 
 class TaskUpdate(BaseModel):
@@ -52,13 +51,12 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = Field(None, description="Task status")
     assigned_agents: Optional[List[str]] = Field(None, description="Agent types to assign")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "status": "in_progress",
-                "assigned_agents": ["engineer", "architect", "dev_manager"]
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "status": "in_progress",
+            "assigned_agents": ["engineer", "architect", "dev_manager"]
         }
+    })
 
 
 class TaskResponse(TaskBase):
@@ -82,14 +80,13 @@ class TaskResponse(TaskBase):
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
     
-    model_config = ConfigDict(from_attributes=True)
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
-                "id": "456e4567-e89b-12d3-a456-426614174000",
+                "id": "456e7890-e89b-12d3-a456-426614174000",
                 "project_id": "123e4567-e89b-12d3-a456-426614174000",
-                "user_id": "789e4567-e89b-12d3-a456-426614174000",
+                "user_id": "789e0123-e89b-12d3-a456-426614174000",
                 "title": "Implement user authentication",
                 "description": "Add JWT-based authentication to the API",
                 "task_type": "feature",
@@ -101,16 +98,14 @@ class TaskResponse(TaskBase):
                     "files_created": 5,
                     "tests_passed": True
                 },
-                "generated_files": [
-                    "src/auth/jwt.py",
-                    "src/auth/middleware.py"
-                ],
+                "generated_files": ["src/auth.py", "tests/test_auth.py"],
                 "git_commits": ["abc123", "def456"],
-                "started_at": "2024-01-10T10:00:00Z",
-                "completed_at": "2024-01-10T11:30:00Z",
-                "execution_time_seconds": 5400,
+                "started_at": "2024-01-01T10:00:00Z",
+                "completed_at": "2024-01-01T12:00:00Z",
+                "execution_time_seconds": 7200,
                 "retry_count": 0,
-                "created_at": "2024-01-10T09:00:00Z",
-                "updated_at": "2024-01-10T11:30:00Z"
+                "created_at": "2024-01-01T09:00:00Z",
+                "updated_at": "2024-01-01T12:00:00Z"
             }
-        } 
+        }
+    ) 

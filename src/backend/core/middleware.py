@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
 
-from core.config import settings
+from src.backend.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def configure_cors(app: FastAPI) -> None:
     """Configure CORS middleware for the application."""
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

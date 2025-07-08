@@ -6,7 +6,7 @@ Provides file-specific database operations.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import ProjectFile
+from src.backend.models import ProjectFile
 from .base import BaseRepository
 
 

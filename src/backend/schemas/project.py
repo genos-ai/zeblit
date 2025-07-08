@@ -1,10 +1,11 @@
 """
 Project schemas.
 
-*Version: 1.0.0*
+*Version: 1.1.0*
 *Author: AI Development Platform Team*
 
 ## Changelog
+- 1.1.0 (2024-01-XX): Added missing schemas for project endpoints.
 - 1.0.0 (2024-01-XX): Initial project schemas implementation.
 """
 
@@ -20,9 +21,10 @@ class ProjectBase(BaseModel):
     
     name: str = Field(..., min_length=1, max_length=255, description="Project name")
     description: Optional[str] = Field(None, description="Project description")
-    template_type: Optional[str] = Field(None, description="Template type (react, nextjs, etc.)")
-    framework_config: Dict[str, Any] = Field(default_factory=dict, description="Framework configuration")
-    git_repo_url: Optional[str] = Field(None, description="Git repository URL")
+    framework: Optional[str] = Field(None, description="Framework (react, nextjs, vue, etc.)")
+    language: str = Field(default="javascript", description="Primary language")
+    is_public: bool = Field(default=False, description="Whether the project is public")
+    settings: Dict[str, Any] = Field(default_factory=dict, description="Project settings")
     
 
 class ProjectCreate(ProjectBase):
@@ -30,18 +32,19 @@ class ProjectCreate(ProjectBase):
     
     template_id: Optional[UUID] = Field(None, description="Template ID to use")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "My Awesome App",
-                "description": "A React-based web application",
-                "template_type": "react",
-                "framework_config": {
-                    "typescript": True,
-                    "tailwind": True
-                }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "My Awesome App",
+            "description": "A React-based web application",
+            "framework": "react",
+            "language": "typescript",
+            "is_public": False,
+            "settings": {
+                "typescript": True,
+                "tailwind": True
             }
         }
+    })
 
 
 class ProjectUpdate(BaseModel):
@@ -49,15 +52,16 @@ class ProjectUpdate(BaseModel):
     
     name: Optional[str] = Field(None, min_length=1, max_length=255, description="Project name")
     description: Optional[str] = Field(None, description="Project description")
-    framework_config: Optional[Dict[str, Any]] = Field(None, description="Framework configuration")
+    is_public: Optional[bool] = Field(None, description="Whether the project is public")
+    settings: Optional[Dict[str, Any]] = Field(None, description="Project settings")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "My Updated App",
-                "description": "Updated description"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "name": "My Updated App",
+            "description": "Updated description",
+            "is_public": True
         }
+    })
 
 
 class ProjectResponse(ProjectBase):
@@ -67,23 +71,26 @@ class ProjectResponse(ProjectBase):
     owner_id: UUID = Field(..., description="Owner user ID")
     status: str = Field(..., description="Project status")
     container_id: Optional[str] = Field(None, description="Container ID")
+    git_repo_url: Optional[str] = Field(None, description="Git repository URL")
     preview_url: Optional[str] = Field(None, description="Preview URL")
     default_branch: str = Field(default="main", description="Default Git branch")
+    is_archived: bool = Field(default=False, description="Whether the project is archived")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
-    last_accessed: datetime = Field(..., description="Last access timestamp")
+    last_accessed: Optional[datetime] = Field(None, description="Last access timestamp")
     
-    model_config = ConfigDict(from_attributes=True)
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "owner_id": "987e4567-e89b-12d3-a456-426614174000",
                 "name": "My Awesome App",
                 "description": "A React-based web application",
-                "template_type": "react",
-                "framework_config": {
+                "framework": "react",
+                "language": "typescript",
+                "is_public": False,
+                "settings": {
                     "typescript": True,
                     "tailwind": True
                 },
@@ -91,11 +98,71 @@ class ProjectResponse(ProjectBase):
                 "container_id": "container_abc123",
                 "preview_url": "https://preview.example.com/project123",
                 "default_branch": "main",
+                "is_archived": False,
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z",
                 "last_accessed": "2024-01-10T10:00:00Z"
             }
         }
+    )
+
+
+class ProjectListResponse(BaseModel):
+    """Schema for paginated project list response."""
+    
+    items: List[ProjectResponse] = Field(..., description="List of projects")
+    total: int = Field(..., ge=0, description="Total number of items")
+    skip: int = Field(..., ge=0, description="Number of items skipped")
+    limit: int = Field(..., ge=1, description="Number of items per page")
+    
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "items": [],
+            "total": 100,
+            "skip": 0,
+            "limit": 20
+        }
+    })
+
+
+class ProjectTemplateResponse(BaseModel):
+    """Schema for project template response."""
+    
+    id: UUID = Field(..., description="Template ID")
+    name: str = Field(..., description="Template name")
+    description: Optional[str] = Field(None, description="Template description")
+    framework: str = Field(..., description="Framework")
+    language: str = Field(..., description="Primary language")
+    tags: List[str] = Field(default_factory=list, description="Template tags")
+    icon_url: Optional[str] = Field(None, description="Template icon URL")
+    preview_url: Optional[str] = Field(None, description="Template preview URL")
+    settings: Dict[str, Any] = Field(default_factory=dict, description="Default settings")
+    popularity_score: int = Field(default=0, description="Usage count")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": "123e4567-e89b-12d3-a456-426614174000",
+                "name": "React TypeScript Starter",
+                "description": "Modern React app with TypeScript, Vite, and Tailwind CSS",
+                "framework": "react",
+                "language": "typescript",
+                "tags": ["react", "typescript", "vite", "tailwind"],
+                "icon_url": "https://example.com/react-icon.png",
+                "preview_url": "https://example.com/preview/react-starter",
+                "settings": {
+                    "typescript": True,
+                    "tailwind": True,
+                    "eslint": True,
+                    "prettier": True
+                },
+                "popularity_score": 150,
+                "created_at": "2024-01-01T00:00:00Z"
+            }
+        }
+    )
 
 
 class ProjectStats(BaseModel):
@@ -110,16 +177,15 @@ class ProjectStats(BaseModel):
     collaborator_count: int = Field(..., description="Number of collaborators")
     last_activity: datetime = Field(..., description="Last activity timestamp")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "project_id": "123e4567-e89b-12d3-a456-426614174000",
-                "file_count": 42,
-                "total_size_bytes": 1048576,
-                "task_count": 20,
-                "completed_tasks": 15,
-                "active_branches": 3,
-                "collaborator_count": 2,
-                "last_activity": "2024-01-10T15:30:00Z"
-            }
-        } 
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "project_id": "123e4567-e89b-12d3-a456-426614174000",
+            "file_count": 42,
+            "total_size_bytes": 1048576,
+            "task_count": 20,
+            "completed_tasks": 15,
+            "active_branches": 3,
+            "collaborator_count": 2,
+            "last_activity": "2024-01-10T15:30:00Z"
+        }
+    }) 

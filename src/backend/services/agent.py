@@ -1,21 +1,22 @@
 """
-Agent service for AI agent management and coordination.
+Agent service for managing AI agents.
 
-Handles agent lifecycle, load balancing, and performance tracking.
+*Version: 1.0.0*
+*Author: AI Development Platform Team*
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from uuid import UUID
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import logging
 import random
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import NotFoundError, ServiceError
-from models import Agent, Task
-from models.enums import AgentType, AgentStatus, TaskStatus
-from repositories import AgentRepository, TaskRepository
+from src.backend.core.exceptions import NotFoundError, ServiceError
+from src.backend.models import Agent, Task
+from src.backend.models.enums import AgentType, AgentStatus, TaskStatus
+from src.backend.repositories import AgentRepository, TaskRepository
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +30,12 @@ class AgentService:
         self.agent_repo = AgentRepository(db)
         self.task_repo = TaskRepository(db)
     
-    async def get_agent(self, agent_id: UUID) -> Agent:
+    async def get_agent_by_id(self, agent_id: UUID) -> Agent:
         """
         Get agent by ID.
         
         Args:
-            agent_id: Agent's ID
+            agent_id: Agent's UUID
             
         Returns:
             Agent instance
@@ -47,12 +48,12 @@ class AgentService:
             raise NotFoundError("Agent", agent_id)
         return agent
     
-    async def get_agent_by_type(self, agent_type: AgentType) -> Agent:
+    async def get_agent_by_type(self, agent_type: str) -> Agent:
         """
         Get agent by type.
         
         Args:
-            agent_type: Type of agent
+            agent_type: Agent type string
             
         Returns:
             Agent instance
@@ -62,22 +63,254 @@ class AgentService:
         """
         agent = await self.agent_repo.get_by_type(agent_type)
         if not agent:
-            raise NotFoundError("Agent", f"type={agent_type.value}")
+            raise NotFoundError("Agent", agent_type)
         return agent
     
-    async def get_all_agents(self, include_inactive: bool = False) -> List[Agent]:
+    async def list_agents(
+        self,
+        skip: int = 0,
+        limit: int = 20,
+        agent_type: Optional[str] = None,
+        is_active: Optional[bool] = None
+    ) -> Tuple[List[Agent], int]:
         """
-        Get all agents.
+        List agents with optional filtering.
         
         Args:
-            include_inactive: Include inactive agents
+            skip: Number of items to skip
+            limit: Maximum number of items to return
+            agent_type: Filter by agent type
+            is_active: Filter by active status
             
         Returns:
-            List of agents
+            Tuple of (agents list, total count)
         """
-        return await self.agent_repo.list(
-            {"is_active": True} if not include_inactive else {}
+        filters = {}
+        if agent_type:
+            filters["type"] = agent_type
+        if is_active is not None:
+            filters["is_active"] = is_active
+        
+        agents = await self.agent_repo.find(
+            criteria=filters,
+            skip=skip,
+            limit=limit
         )
+        
+        total = await self.agent_repo.count(filters)
+        
+        return agents, total
+    
+    async def get_agent_status(self, agent_id: UUID) -> Dict[str, Any]:
+        """
+        Get current agent status.
+        
+        Args:
+            agent_id: Agent's UUID
+            
+        Returns:
+            Status information dictionary
+        """
+        agent = await self.get_agent_by_id(agent_id)
+        
+        # Get current tasks
+        current_tasks = await self.task_repo.find(
+            criteria={
+                "primary_agent": agent.type,
+                "status": TaskStatus.IN_PROGRESS
+            },
+            limit=5
+        )
+        
+        # Get recent completed tasks
+        recent_completed = await self.task_repo.find(
+            criteria={
+                "primary_agent": agent.type,
+                "status": TaskStatus.COMPLETED
+            },
+            limit=10
+        )
+        
+        # Calculate load
+        active_task_count = len(current_tasks)
+        load_level = "idle" if active_task_count == 0 else \
+                    "normal" if active_task_count < 3 else \
+                    "busy" if active_task_count < 5 else "overloaded"
+        
+        return {
+            "agent_id": agent.id,
+            "agent_type": agent.type,
+            "status": "active" if agent.is_active else "inactive",
+            "load_level": load_level,
+            "current_tasks": active_task_count,
+            "current_task_ids": [task.id for task in current_tasks],
+            "completed_today": len([t for t in recent_completed 
+                                   if t.completed_at and 
+                                   t.completed_at.date() == datetime.now(timezone.utc).date()]),
+            "average_response_time": agent.average_response_time,
+            "last_activity": agent.updated_at
+        }
+    
+    async def update_agent_status(
+        self,
+        agent_id: UUID,
+        status: str,
+        current_task_id: Optional[UUID] = None,
+        last_activity: Optional[datetime] = None
+    ) -> Dict[str, Any]:
+        """
+        Update agent status.
+        
+        Args:
+            agent_id: Agent's UUID
+            status: New status
+            current_task_id: Current task being processed
+            last_activity: Last activity timestamp
+            
+        Returns:
+            Updated status information
+        """
+        agent = await self.get_agent_by_id(agent_id)
+        
+        # Update agent
+        update_data = {}
+        if last_activity:
+            update_data["updated_at"] = last_activity
+        
+        if update_data:
+            await self.agent_repo.update(agent_id, **update_data)
+        
+        # Return updated status
+        return await self.get_agent_status(agent_id)
+    
+    async def get_agent_metrics(
+        self,
+        agent_id: UUID,
+        days: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Get agent performance metrics.
+        
+        Args:
+            agent_id: Agent's UUID
+            days: Number of days to analyze
+            
+        Returns:
+            Metrics dictionary
+        """
+        agent = await self.get_agent_by_id(agent_id)
+        
+        # Calculate date range
+        end_date = datetime.now(timezone.utc)
+        start_date = end_date - timedelta(days=days)
+        
+        # Get tasks in date range
+        tasks = await self.task_repo.get_tasks_for_agent_in_range(
+            agent_type=agent.type,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        # Calculate metrics
+        total_tasks = len(tasks)
+        completed_tasks = len([t for t in tasks if t.status == TaskStatus.COMPLETED])
+        failed_tasks = len([t for t in tasks if t.status == TaskStatus.FAILED])
+        
+        # Calculate average duration for completed tasks
+        durations = []
+        for task in tasks:
+            if task.status == TaskStatus.COMPLETED and task.execution_time_seconds:
+                durations.append(task.execution_time_seconds)
+        
+        avg_duration = sum(durations) / len(durations) if durations else 0
+        
+        # Calculate success rate
+        success_rate = completed_tasks / total_tasks if total_tasks > 0 else 0
+        
+        # Token usage (simplified - would need CostTracking integration)
+        total_tokens = agent.total_tokens_used
+        
+        return {
+            "agent_id": agent.id,
+            "agent_type": agent.type,
+            "period_start": start_date,
+            "period_end": end_date,
+            "total_tasks": total_tasks,
+            "completed_tasks": completed_tasks,
+            "failed_tasks": failed_tasks,
+            "success_rate": success_rate,
+            "average_task_duration": avg_duration,
+            "total_tokens_used": total_tokens,
+            "total_cost_usd": agent.total_cost_usd,
+            "average_response_time": agent.average_response_time,
+            "busiest_day": self._find_busiest_day(tasks),
+            "task_distribution": self._calculate_task_distribution(tasks)
+        }
+    
+    async def select_agent_for_task(
+        self,
+        task_type: str,
+        required_agents: List[str]
+    ) -> Agent:
+        """
+        Select the best agent for a task.
+        
+        Args:
+            task_type: Type of task
+            required_agents: List of required agent types
+            
+        Returns:
+            Selected agent
+            
+        Raises:
+            ServiceError: If no suitable agent found
+        """
+        # For now, simple selection based on task type
+        # In future, could use load balancing, specialization, etc.
+        
+        agent_type_map = {
+            "feature": AgentType.ENGINEER,
+            "bug_fix": AgentType.ENGINEER,
+            "design": AgentType.ARCHITECT,
+            "analysis": AgentType.DATA_ANALYST,
+            "deployment": AgentType.PLATFORM_ENGINEER,
+            "requirements": AgentType.PRODUCT_MANAGER,
+            "coordination": AgentType.DEVELOPMENT_MANAGER
+        }
+        
+        # Determine primary agent type
+        primary_type = agent_type_map.get(task_type, AgentType.DEVELOPMENT_MANAGER)
+        
+        # Get the agent
+        agent = await self.agent_repo.get_by_type(primary_type.value)
+        if not agent or not agent.is_active:
+            raise ServiceError(f"No active agent of type {primary_type.value} available")
+        
+        return agent
+    
+    def _find_busiest_day(self, tasks: List[Task]) -> Optional[str]:
+        """Find the day with most tasks."""
+        if not tasks:
+            return None
+        
+        day_counts = {}
+        for task in tasks:
+            if task.created_at:
+                day = task.created_at.date().isoformat()
+                day_counts[day] = day_counts.get(day, 0) + 1
+        
+        if not day_counts:
+            return None
+        
+        return max(day_counts, key=day_counts.get)
+    
+    def _calculate_task_distribution(self, tasks: List[Task]) -> Dict[str, int]:
+        """Calculate distribution of task types."""
+        distribution = {}
+        for task in tasks:
+            task_type = task.task_type or "unknown"
+            distribution[task_type] = distribution.get(task_type, 0) + 1
+        return distribution
     
     async def get_available_agent(
         self,
@@ -196,7 +429,7 @@ class AgentService:
         Returns:
             Updated agent
         """
-        agent = await self.get_agent(agent_id)
+        agent = await self.get_agent_by_id(agent_id)
         
         # Update agent metrics
         new_load = max(0, agent.current_load - 1)
@@ -236,7 +469,7 @@ class AgentService:
         Returns:
             Agent statistics
         """
-        agent = await self.get_agent(agent_id)
+        agent = await self.get_agent_by_id(agent_id)
         
         # Get recent tasks
         recent_tasks = await self.task_repo.list(
@@ -295,7 +528,7 @@ class AgentService:
         Returns:
             Aggregated agent statistics
         """
-        agents = await self.get_all_agents(include_inactive=True)
+        agents = await self.list_agents(agent_type=None, is_active=True)
         
         # Aggregate statistics
         total_tasks = sum(a.total_tasks_handled for a in agents)
@@ -370,7 +603,7 @@ class AgentService:
         Returns:
             Updated agent
         """
-        agent = await self.get_agent(agent_id)
+        agent = await self.get_agent_by_id(agent_id)
         
         # Merge with existing configuration
         current_config = agent.configuration or {}

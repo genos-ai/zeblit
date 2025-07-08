@@ -79,6 +79,22 @@ class ConflictError(BaseAPIException):
         )
 
 
+class EmailAlreadyExistsError(ConflictError):
+    """Raised when attempting to use an email that already exists."""
+    
+    def __init__(self, email: Optional[str] = None):
+        detail = f"Email '{email}' is already registered" if email else "Email is already registered"
+        super().__init__(detail=detail)
+
+
+class UsernameAlreadyExistsError(ConflictError):
+    """Raised when attempting to use a username that already exists."""
+    
+    def __init__(self, username: Optional[str] = None):
+        detail = f"Username '{username}' is already taken" if username else "Username is already taken"
+        super().__init__(detail=detail)
+
+
 class RateLimitError(BaseAPIException):
     """Raised when rate limit is exceeded."""
     
@@ -153,4 +169,9 @@ class ServiceError(BaseAPIException):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=detail,
             error_type="ServiceError"
-        ) 
+        )
+
+
+# Aliases for consistency with imported code
+ResourceNotFoundError = NotFoundError  # Alias for backwards compatibility
+UnauthorizedError = AuthorizationError  # Alias for consistency 

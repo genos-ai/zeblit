@@ -78,18 +78,18 @@ class AuthService:
             JWT token string
         """
         if expires_delta:
-            expire = datetime.now(timezone.utc) + expires_delta
+            expire = datetime.utcnow() + expires_delta
         else:
-            expire = datetime.now(timezone.utc) + timedelta(
+            expire = datetime.utcnow() + timedelta(
                 minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
             )
         
         to_encode = {
             "sub": str(user_id),
             "email": email,
-            "role": role.value,
+            "role": role if isinstance(role, str) else role.value,
             "exp": expire,
-            "iat": datetime.now(timezone.utc),
+            "iat": datetime.utcnow(),
             "type": "access"
         }
         
@@ -116,16 +116,16 @@ class AuthService:
             JWT refresh token string
         """
         if expires_delta:
-            expire = datetime.now(timezone.utc) + expires_delta
+            expire = datetime.utcnow() + expires_delta
         else:
-            expire = datetime.now(timezone.utc) + timedelta(
+            expire = datetime.utcnow() + timedelta(
                 days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
             )
         
         to_encode = {
             "sub": str(user_id),
             "exp": expire,
-            "iat": datetime.now(timezone.utc),
+            "iat": datetime.utcnow(),
             "type": "refresh"
         }
         
@@ -192,7 +192,7 @@ class AuthService:
             raise AuthenticationError("User account is inactive")
         
         # Update last login
-        await self.user_repo.update(user.id, {"last_login": datetime.now(timezone.utc)})
+        await self.user_repo.update(user.id, last_login=datetime.utcnow())
         
         # Generate tokens
         access_token = self.create_access_token(
@@ -462,7 +462,7 @@ class AuthService:
         Returns:
             Password reset token
         """
-        expire = datetime.now(timezone.utc) + timedelta(hours=1)
+        expire = datetime.utcnow() + timedelta(hours=1)
         to_encode = {
             "email": email,
             "exp": expire,

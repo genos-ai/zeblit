@@ -30,16 +30,15 @@ class MessageCreate(MessageBase):
     target_agent: Optional[str] = Field(None, description="Target agent type if directed")
     requires_response: bool = Field(default=True, description="Whether message requires a response")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "role": "user",
-                "content": "Create a React component for user login",
-                "message_type": "text",
-                "target_agent": "engineer",
-                "requires_response": True
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "role": "user",
+            "content": "Create a React component for user login",
+            "message_type": "text",
+            "target_agent": "engineer",
+            "requires_response": True
         }
+    })
 
 
 class MessageResponse(MessageBase):
@@ -55,7 +54,10 @@ class MessageResponse(MessageBase):
     requires_response: bool = Field(..., description="Whether requires response")
     created_at: datetime = Field(..., description="Creation timestamp")
     
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        protected_namespaces=()  # Disable protected namespaces to allow model_used field
+    )
 
 
 class ConversationCreate(BaseModel):
@@ -66,17 +68,17 @@ class ConversationCreate(BaseModel):
     title: Optional[str] = Field(None, description="Conversation title")
     context: Dict[str, Any] = Field(default_factory=dict, description="Initial context")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "project_id": "123e4567-e89b-12d3-a456-426614174000",
-                "title": "Implement authentication feature",
-                "context": {
-                    "framework": "react",
-                    "requirements": ["JWT", "OAuth2"]
-                }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "project_id": "123e4567-e89b-12d3-a456-426614174000",
+            "agent_id": "abc4567-e89b-12d3-a456-426614174000",
+            "title": "Implement authentication feature",
+            "context": {
+                "framework": "react",
+                "requirements": ["JWT", "OAuth2"]
             }
         }
+    })
 
 
 class ConversationResponse(BaseModel):
@@ -94,10 +96,9 @@ class ConversationResponse(BaseModel):
     last_message_at: Optional[datetime] = Field(None, description="Last message timestamp")
     message_count: int = Field(default=0, description="Total message count")
     
-    model_config = ConfigDict(from_attributes=True)
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "id": "789e4567-e89b-12d3-a456-426614174000",
                 "project_id": "123e4567-e89b-12d3-a456-426614174000",
@@ -112,9 +113,10 @@ class ConversationResponse(BaseModel):
                 "created_at": "2024-01-10T10:00:00Z",
                 "updated_at": "2024-01-10T12:00:00Z",
                 "last_message_at": "2024-01-10T12:00:00Z",
-                "message_count": 15
+                "message_count": 2
             }
         }
+    )
 
 
 class ConversationWithMessages(ConversationResponse):
@@ -122,44 +124,43 @@ class ConversationWithMessages(ConversationResponse):
     
     messages: List[MessageResponse] = Field(..., description="Conversation messages")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "789e4567-e89b-12d3-a456-426614174000",
-                "project_id": "123e4567-e89b-12d3-a456-426614174000",
-                "user_id": "456e4567-e89b-12d3-a456-426614174000",
-                "agent_id": "abc4567-e89b-12d3-a456-426614174000",
-                "title": "Implement authentication feature",
-                "context": {
-                    "framework": "react",
-                    "requirements": ["JWT", "OAuth2"]
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "id": "789e4567-e89b-12d3-a456-426614174000",
+            "project_id": "123e4567-e89b-12d3-a456-426614174000",
+            "user_id": "456e4567-e89b-12d3-a456-426614174000",
+            "agent_id": "abc4567-e89b-12d3-a456-426614174000",
+            "title": "Implement authentication feature",
+            "context": {
+                "framework": "react",
+                "requirements": ["JWT", "OAuth2"]
+            },
+            "is_active": True,
+            "created_at": "2024-01-10T10:00:00Z",
+            "updated_at": "2024-01-10T12:00:00Z",
+            "last_message_at": "2024-01-10T12:00:00Z",
+            "message_count": 2,
+            "messages": [
+                {
+                    "id": "msg1-4567-e89b-12d3-a456-426614174000",
+                    "conversation_id": "789e4567-e89b-12d3-a456-426614174000",
+                    "role": "user",
+                    "content": "Create a React login component",
+                    "message_type": "text",
+                    "metadata": {},
+                    "created_at": "2024-01-10T10:00:00Z"
                 },
-                "is_active": True,
-                "created_at": "2024-01-10T10:00:00Z",
-                "updated_at": "2024-01-10T12:00:00Z",
-                "last_message_at": "2024-01-10T12:00:00Z",
-                "message_count": 2,
-                "messages": [
-                    {
-                        "id": "msg1-4567-e89b-12d3-a456-426614174000",
-                        "conversation_id": "789e4567-e89b-12d3-a456-426614174000",
-                        "role": "user",
-                        "content": "Create a React login component",
-                        "message_type": "text",
-                        "metadata": {},
-                        "created_at": "2024-01-10T10:00:00Z"
-                    },
-                    {
-                        "id": "msg2-4567-e89b-12d3-a456-426614174000",
-                        "conversation_id": "789e4567-e89b-12d3-a456-426614174000",
-                        "role": "assistant",
-                        "content": "I'll create a React login component...",
-                        "message_type": "text",
-                        "metadata": {},
-                        "model_used": "claude-sonnet-4",
-                        "token_count": 150,
-                        "created_at": "2024-01-10T10:01:00Z"
-                    }
-                ]
-            }
-        } 
+                {
+                    "id": "msg2-4567-e89b-12d3-a456-426614174000",
+                    "conversation_id": "789e4567-e89b-12d3-a456-426614174000",
+                    "role": "assistant",
+                    "content": "I'll create a React login component...",
+                    "message_type": "text",
+                    "metadata": {},
+                    "model_used": "claude-sonnet-4",
+                    "token_count": 150,
+                    "created_at": "2024-01-10T10:01:00Z"
+                }
+            ]
+        }
+    }) 

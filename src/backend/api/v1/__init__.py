@@ -1,35 +1,42 @@
 """
-API version 1 router configuration.
+API version 1 router.
 
-This module aggregates all v1 API routers and provides
-a single router instance for the main application.
-
-*Version: 1.1.0*
+*Version: 1.0.0*
 *Author: AI Development Platform Team*
 
 ## Changelog
-- 1.1.0 (2024-01-XX): Added auth and users endpoints.
-- 1.0.0 (2024-01-XX): Initial v1 router configuration.
+- 1.0.0 (2024-01-XX): Initial API v1 implementation.
 """
 
 from fastapi import APIRouter
 
-from .health import router as health_router
-from .endpoints.auth import router as auth_router
-from .endpoints.users import router as users_router
+from src.backend.api.v1.endpoints import (
+    health_router,
+    auth_router,
+    users_router,
+    projects_router,
+    agents_router,
+    websocket_router,
+    console_router,
+)
 
-# Create main v1 router
-router = APIRouter(prefix="/api/v1")
+# Create v1 router
+api_router = APIRouter()
 
-# Include all sub-routers
-router.include_router(health_router, tags=["health"])
-router.include_router(auth_router, tags=["authentication"])
-router.include_router(users_router, tags=["users"])
+# Include all endpoint routers
+api_router.include_router(health_router)
+api_router.include_router(auth_router)
+api_router.include_router(users_router)
+api_router.include_router(projects_router)
+api_router.include_router(agents_router)
+api_router.include_router(websocket_router)
+api_router.include_router(console_router)
 
 # Future routers will be added here:
-# router.include_router(projects_router, prefix="/projects", tags=["projects"])
-# router.include_router(agents_router, prefix="/agents", tags=["agents"])
 # router.include_router(conversations_router, prefix="/conversations", tags=["conversations"])
 # router.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
 # router.include_router(files_router, prefix="/files", tags=["files"])
-# router.include_router(containers_router, prefix="/containers", tags=["containers"]) 
+# router.include_router(containers_router, prefix="/containers", tags=["containers"])
+
+# Export as router for main.py
+router = api_router 

@@ -13,6 +13,7 @@ from .conversation import ConversationRepository
 from .task import TaskRepository
 from .project_file import ProjectFileRepository
 from .container import ContainerRepository
+from .cost_tracking import CostTrackingRepository
 
 __all__ = [
     "BaseRepository",
@@ -23,4 +24,5 @@ __all__ = [
     "TaskRepository",
     "ProjectFileRepository",
     "ContainerRepository",
+    "CostTrackingRepository",
 ] 

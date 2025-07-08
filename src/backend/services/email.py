@@ -1,7 +1,8 @@
 """
 Email service for sending transactional emails.
 
-Integrates with Resend API for reliable email delivery.
+*Version: 1.0.0*
+*Author: AI Development Platform Team*
 """
 
 from typing import List, Dict, Any, Optional
@@ -9,9 +10,9 @@ from uuid import UUID
 import logging
 import httpx
 
-from core.config import settings
-from core.exceptions import ServiceError
-from models import User
+from src.backend.core.config import settings
+from src.backend.core.exceptions import ServiceError
+from src.backend.models import User
 
 logger = logging.getLogger(__name__)
 

@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 import logging
 
-from models import Conversation, AgentMessage, Agent
-from models.enums import AgentType
+from src.backend.models import Conversation, AgentMessage, Agent
+from src.backend.models.enums import AgentType
 from .base import BaseRepository
 
 logger = logging.getLogger(__name__)

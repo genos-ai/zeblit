@@ -1,9 +1,9 @@
-# AI Development Platform - Requirements
-# Using latest versions unless compatibility issues require pinning
-
-# Core Framework
+# Core dependencies
 fastapi
 uvicorn[standard]
+pydantic[email]
+pydantic-settings
+python-dotenv
 python-multipart
 
 # Database
@@ -12,70 +12,33 @@ alembic
 asyncpg
 psycopg2-binary
 
-# Authentication & Security
+# Redis
+redis[hiredis]
+
+# Authentication
 python-jose[cryptography]
 passlib[bcrypt]
-python-multipart
-
-# Validation and Serialization
-pydantic
-pydantic-settings
-email-validator
-
-# Redis & Task Queue
-redis
-celery
-flower
-
-# HTTP Client
-httpx
-aiohttp
-
-# WebSocket
-websockets
-
-# AI/LLM Integrations
-anthropic
-openai
-google-generativeai
+bcrypt
 
 # Email
 resend
 
-# Configuration
-python-dotenv
+# HTTP client
+httpx
+aiohttp
 
-# Logging
-structlog
-
-# Date/Time
-python-dateutil
-
-# Testing
+# Development
 pytest
 pytest-asyncio
-pytest-cov
-httpx
-pytest-mock
-
-# Code Quality
 black
-isort
 flake8
 mypy
-pre-commit
-
-# Security
-bandit
-safety
-
-# Type Checking
-types-python-dateutil
-types-redis
-
-# Development Tools
-jupyter
 ipython
 
-# Performance & Monitoring
-psutil 
+# Monitoring
+structlog
+python-json-logger
+
+# Utilities
+tenacity
+arrow 

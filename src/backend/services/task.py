@@ -11,10 +11,10 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import NotFoundError, ValidationError, ServiceError
-from models import Task, Project, Agent
-from models.enums import TaskStatus, TaskPriority, AgentType
-from repositories import TaskRepository, ProjectRepository, AgentRepository
+from src.backend.core.exceptions import NotFoundError, ValidationError, ServiceError
+from src.backend.models import Task, Project, Agent, User
+from src.backend.models.enums import TaskStatus, TaskPriority, AgentType, TaskType
+from src.backend.repositories import TaskRepository, ProjectRepository, AgentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -32,76 +32,74 @@ class TaskService:
     async def create_task(
         self,
         project_id: UUID,
+        user_id: UUID,
         title: str,
         description: str,
-        agent_type: AgentType,
-        priority: TaskPriority = TaskPriority.MEDIUM,
+        task_type: Optional[str] = None,
+        complexity: Optional[str] = None,
         parent_task_id: Optional[UUID] = None,
-        dependencies: Optional[List[UUID]] = None,
-        estimated_tokens: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        assigned_agents: Optional[List[str]] = None
     ) -> Task:
         """
         Create a new task.
         
         Args:
             project_id: Project ID
+            user_id: User creating the task
             title: Task title
             description: Task description
-            agent_type: Type of agent for the task
-            priority: Task priority
+            task_type: Type of task
+            complexity: Task complexity
             parent_task_id: Parent task for subtasks
-            dependencies: List of task IDs this depends on
-            estimated_tokens: Estimated tokens needed
-            metadata: Additional task metadata
+            assigned_agents: Agent types to assign
             
         Returns:
             Created task
             
         Raises:
-            NotFoundError: If project not found
+            NotFoundError: If project or parent task not found
             ValidationError: If validation fails
         """
-        # Verify project exists
+        # Validate project exists and user has access
         project = await self.project_repo.get(project_id)
         if not project:
             raise NotFoundError("Project", project_id)
         
-        # Validate parent task if provided
+        # Validate parent task if specified
         if parent_task_id:
-            parent = await self.task_repo.get(parent_task_id)
-            if not parent or parent.project_id != project_id:
-                raise ValidationError("Invalid parent task")
-        
-        # Validate dependencies
-        if dependencies:
-            for dep_id in dependencies:
-                dep = await self.task_repo.get(dep_id)
-                if not dep or dep.project_id != project_id:
-                    raise ValidationError(f"Invalid dependency: {dep_id}")
+            parent_task = await self.task_repo.get(parent_task_id)
+            if not parent_task:
+                raise NotFoundError("Parent task", parent_task_id)
+            if parent_task.project_id != project_id:
+                raise ValidationError("Parent task must be in the same project")
         
         # Create task
-        task = await self.task_repo.create_task(
+        task = await self.task_repo.create(
             project_id=project_id,
+            user_id=user_id,
             title=title,
             description=description,
-            agent_type=agent_type,
-            priority=priority,
+            task_type=task_type,
+            complexity=complexity,
             parent_task_id=parent_task_id,
-            dependencies=dependencies or [],
-            estimated_tokens=estimated_tokens,
-            metadata=metadata
+            status=TaskStatus.PENDING,
+            assigned_agents=assigned_agents or []
         )
         
-        logger.info(f"Created task '{task.title}' for project {project_id}")
+        logger.info(f"Created task '{task.title}' in project {project_id}")
         return task
     
-    async def get_task(self, task_id: UUID) -> Task:
+    async def get_task(
+        self,
+        task_id: UUID,
+        user_id: UUID
+    ) -> Task:
         """
-        Get task by ID.
+        Get a task with authorization check.
         
         Args:
             task_id: Task ID
+            user_id: User requesting
             
         Returns:
             Task instance
@@ -111,273 +109,300 @@ class TaskService:
         """
         task = await self.task_repo.get(
             task_id,
-            load_relationships=["project", "agent", "parent_task"]
+            load_relationships=["project", "agent_messages"]
         )
+        
         if not task:
             raise NotFoundError("Task", task_id)
+        
+        # TODO: Add authorization check based on project access
+        
         return task
     
-    async def get_project_tasks(
+    async def list_project_tasks(
         self,
         project_id: UUID,
+        user_id: UUID,
         status: Optional[TaskStatus] = None,
-        agent_type: Optional[AgentType] = None,
-        include_subtasks: bool = True,
+        assigned_agent: Optional[str] = None,
         skip: int = 0,
-        limit: int = 50
+        limit: int = 20
     ) -> List[Task]:
         """
-        Get tasks for a project.
+        List tasks for a project.
         
         Args:
             project_id: Project ID
+            user_id: User requesting
             status: Filter by status
-            agent_type: Filter by agent type
-            include_subtasks: Include subtasks
+            assigned_agent: Filter by assigned agent
             skip: Pagination offset
             limit: Page size
             
         Returns:
             List of tasks
         """
-        filters = {"project_id": project_id}
+        # TODO: Add authorization check
         
+        criteria = {"project_id": project_id}
         if status:
-            filters["status"] = status
-        if agent_type:
-            filters["agent_type"] = agent_type
-        if not include_subtasks:
-            filters["parent_task_id"] = None
+            criteria["status"] = status
+        if assigned_agent:
+            # This would need a more complex query for array contains
+            pass
         
-        return await self.task_repo.list(
-            filters,
+        return await self.task_repo.find(
+            criteria=criteria,
             skip=skip,
             limit=limit,
-            order_by="created_at",
-            order_desc=True,
-            load_relationships=["agent"]
+            order_by=[("created_at", "desc")]
         )
     
-    async def assign_task(
+    async def update_task_status(
         self,
         task_id: UUID,
-        agent_id: Optional[UUID] = None
+        status: TaskStatus,
+        agent_id: Optional[UUID] = None,
+        error_message: Optional[str] = None
     ) -> Task:
         """
-        Assign a task to an agent.
+        Update task status.
         
         Args:
-            task_id: Task to assign
-            agent_id: Specific agent to assign to (optional)
+            task_id: Task ID
+            status: New status
+            agent_id: Agent updating status
+            error_message: Error message if failed
             
         Returns:
             Updated task
-            
-        Raises:
-            ServiceError: If assignment fails
         """
-        task = await self.get_task(task_id)
+        task = await self.task_repo.get(task_id)
+        if not task:
+            raise NotFoundError("Task", task_id)
         
-        # Check if task can be assigned
-        if task.status not in [TaskStatus.PENDING, TaskStatus.FAILED]:
-            raise ValidationError(f"Cannot assign task in {task.status.value} status")
+        update_data = {"status": status}
         
-        # Check dependencies
-        if not await self._can_start_task(task):
-            raise ValidationError("Task has unresolved dependencies")
+        # Set timestamps based on status
+        if status == TaskStatus.IN_PROGRESS and not task.started_at:
+            update_data["started_at"] = datetime.now(timezone.utc)
+        elif status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+            update_data["completed_at"] = datetime.now(timezone.utc)
+            if task.started_at:
+                duration = (update_data["completed_at"] - task.started_at).total_seconds()
+                update_data["execution_time_seconds"] = int(duration)
         
-        # Get or find agent
-        if agent_id:
-            agent = await self.agent_repo.get(agent_id)
-            if not agent or agent.type != task.agent_type:
-                raise ValidationError("Invalid agent for task type")
-        else:
-            # Find available agent
-            agents = await self.agent_repo.list({
-                "type": task.agent_type,
-                "is_active": True
-            })
-            
-            if not agents:
-                raise ServiceError(f"No available {task.agent_type.value} agent")
-            
-            # Simple load balancing - pick least loaded
-            agent = min(agents, key=lambda a: a.current_load)
+        if error_message and status == TaskStatus.FAILED:
+            update_data["error_message"] = error_message
         
-        # Assign task
-        task = await self.task_repo.update(
-            task_id,
-            agent_id=agent.id,
-            status=TaskStatus.ASSIGNED,
-            assigned_at=datetime.now(timezone.utc)
-        )
+        task = await self.task_repo.update(task_id, **update_data)
         
-        # Update agent load
-        await self.agent_repo.update(
-            agent.id,
-            current_load=agent.current_load + 1
-        )
-        
-        logger.info(f"Assigned task {task_id} to agent {agent.id}")
+        logger.info(f"Updated task {task_id} status to {status}")
         return task
     
-    async def start_task(self, task_id: UUID) -> Task:
+    async def assign_agent_to_task(
+        self,
+        task_id: UUID,
+        agent_type: str,
+        is_primary: bool = False
+    ) -> Task:
         """
-        Start working on a task.
+        Assign an agent to a task.
         
         Args:
-            task_id: Task to start
+            task_id: Task ID
+            agent_type: Agent type to assign
+            is_primary: Whether this is the primary agent
             
         Returns:
             Updated task
         """
-        task = await self.get_task(task_id)
+        task = await self.task_repo.get(task_id)
+        if not task:
+            raise NotFoundError("Task", task_id)
         
-        if task.status != TaskStatus.ASSIGNED:
-            raise ValidationError("Task must be assigned before starting")
+        # Verify agent exists
+        agent = await self.agent_repo.get_by_type(agent_type)
+        if not agent:
+            raise NotFoundError("Agent", agent_type)
         
-        task = await self.task_repo.update(
-            task_id,
-            status=TaskStatus.IN_PROGRESS,
-            started_at=datetime.now(timezone.utc)
-        )
+        # Update assigned agents
+        assigned_agents = task.assigned_agents or []
+        if agent_type not in assigned_agents:
+            assigned_agents.append(agent_type)
         
-        logger.info(f"Started task {task_id}")
+        update_data = {"assigned_agents": assigned_agents}
+        if is_primary:
+            update_data["primary_agent"] = agent_type
+        
+        task = await self.task_repo.update(task_id, **update_data)
+        
+        logger.info(f"Assigned agent {agent_type} to task {task_id}")
         return task
     
-    async def update_task_progress(
+    async def add_task_result(
         self,
         task_id: UUID,
-        progress_percentage: int,
-        progress_message: Optional[str] = None
+        result_key: str,
+        result_value: Any
     ) -> Task:
         """
-        Update task progress.
+        Add a result to a task.
         
         Args:
-            task_id: Task to update
-            progress_percentage: Progress (0-100)
-            progress_message: Optional progress message
+            task_id: Task ID
+            result_key: Result key
+            result_value: Result value
             
         Returns:
             Updated task
         """
-        if not 0 <= progress_percentage <= 100:
-            raise ValidationError("Progress must be between 0 and 100")
+        task = await self.task_repo.get(task_id)
+        if not task:
+            raise NotFoundError("Task", task_id)
         
-        updates = {"progress_percentage": progress_percentage}
+        # Update results
+        results = task.results or {}
+        results[result_key] = result_value
         
-        if progress_message:
-            task = await self.get_task(task_id)
-            progress_updates = task.progress_updates or []
-            progress_updates.append({
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "percentage": progress_percentage,
-                "message": progress_message
-            })
-            updates["progress_updates"] = progress_updates
+        task = await self.task_repo.update(task_id, results=results)
         
-        return await self.task_repo.update(task_id, **updates)
-    
-    async def complete_task(
-        self,
-        task_id: UUID,
-        result: Optional[Dict[str, Any]] = None,
-        tokens_used: Optional[int] = None,
-        model_used: Optional[str] = None
-    ) -> Task:
-        """
-        Mark task as completed.
-        
-        Args:
-            task_id: Task to complete
-            result: Task result data
-            tokens_used: Tokens used
-            model_used: AI model used
-            
-        Returns:
-            Updated task
-        """
-        task = await self.get_task(task_id)
-        
-        if task.status != TaskStatus.IN_PROGRESS:
-            raise ValidationError("Task must be in progress to complete")
-        
-        # Update task
-        task = await self.task_repo.update(
-            task_id,
-            status=TaskStatus.COMPLETED,
-            completed_at=datetime.now(timezone.utc),
-            result=result,
-            tokens_used=tokens_used,
-            model_used=model_used,
-            progress_percentage=100
-        )
-        
-        # Update agent load if assigned
-        if task.agent_id:
-            agent = await self.agent_repo.get(task.agent_id)
-            if agent:
-                await self.agent_repo.update(
-                    agent.id,
-                    current_load=max(0, agent.current_load - 1)
-                )
-        
-        # Check if this unblocks other tasks
-        await self._check_dependent_tasks(task_id)
-        
-        logger.info(f"Completed task {task_id}")
         return task
     
-    async def fail_task(
+    async def add_generated_file(
         self,
         task_id: UUID,
-        error_message: str,
-        can_retry: bool = True
+        file_path: str
     ) -> Task:
         """
-        Mark task as failed.
+        Add a generated file path to a task.
         
         Args:
-            task_id: Task that failed
-            error_message: Error description
-            can_retry: Whether task can be retried
+            task_id: Task ID
+            file_path: Generated file path
             
         Returns:
             Updated task
         """
-        task = await self.get_task(task_id)
+        task = await self.task_repo.get(task_id)
+        if not task:
+            raise NotFoundError("Task", task_id)
         
-        # Update retry info
-        retry_count = task.retry_count + 1
-        max_retries = task.max_retries or 3
+        # Update generated files
+        generated_files = task.generated_files or []
+        if file_path not in generated_files:
+            generated_files.append(file_path)
         
-        updates = {
-            "status": TaskStatus.FAILED,
-            "completed_at": datetime.now(timezone.utc),
-            "error_message": error_message,
-            "retry_count": retry_count
+        task = await self.task_repo.update(task_id, generated_files=generated_files)
+        
+        return task
+    
+    async def get_subtasks(
+        self,
+        parent_task_id: UUID
+    ) -> List[Task]:
+        """
+        Get subtasks of a parent task.
+        
+        Args:
+            parent_task_id: Parent task ID
+            
+        Returns:
+            List of subtasks
+        """
+        return await self.task_repo.find(
+            criteria={"parent_task_id": parent_task_id},
+            order_by=[("created_at", "asc")]
+        )
+    
+    async def retry_task(
+        self,
+        task_id: UUID,
+        user_id: UUID
+    ) -> Task:
+        """
+        Retry a failed task.
+        
+        Args:
+            task_id: Task ID
+            user_id: User requesting retry
+            
+        Returns:
+            Reset task
+        """
+        task = await self.get_task(task_id, user_id)
+        
+        if task.status != TaskStatus.FAILED:
+            raise ValidationError("Can only retry failed tasks")
+        
+        # Reset task
+        update_data = {
+            "status": TaskStatus.PENDING,
+            "started_at": None,
+            "completed_at": None,
+            "execution_time_seconds": None,
+            "error_message": None,
+            "retry_count": task.retry_count + 1
         }
         
-        # Check if can retry
-        if not can_retry or retry_count >= max_retries:
-            updates["status"] = TaskStatus.FAILED
-        else:
-            updates["status"] = TaskStatus.PENDING  # Ready for retry
+        task = await self.task_repo.update(task_id, **update_data)
         
-        task = await self.task_repo.update(task_id, **updates)
-        
-        # Update agent load if assigned
-        if task.agent_id:
-            agent = await self.agent_repo.get(task.agent_id)
-            if agent:
-                await self.agent_repo.update(
-                    agent.id,
-                    current_load=max(0, agent.current_load - 1)
-                )
-        
-        logger.warning(f"Task {task_id} failed: {error_message}")
+        logger.info(f"Retrying task {task_id} (attempt {task.retry_count})")
         return task
+    
+    async def get_task_statistics(
+        self,
+        project_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Get task statistics for a project.
+        
+        Args:
+            project_id: Project ID
+            
+        Returns:
+            Task statistics
+        """
+        tasks = await self.task_repo.find(
+            criteria={"project_id": project_id}
+        )
+        
+        total = len(tasks)
+        by_status = {}
+        by_type = {}
+        total_execution_time = 0
+        failed_tasks = []
+        
+        for task in tasks:
+            # Count by status
+            status = task.status.value
+            by_status[status] = by_status.get(status, 0) + 1
+            
+            # Count by type
+            task_type = task.task_type or "unspecified"
+            by_type[task_type] = by_type.get(task_type, 0) + 1
+            
+            # Sum execution time
+            if task.execution_time_seconds:
+                total_execution_time += task.execution_time_seconds
+            
+            # Track failed tasks
+            if task.status == TaskStatus.FAILED:
+                failed_tasks.append({
+                    "id": task.id,
+                    "title": task.title,
+                    "error": task.error_message
+                })
+        
+        return {
+            "total": total,
+            "by_status": by_status,
+            "by_type": by_type,
+            "total_execution_time_seconds": total_execution_time,
+            "average_execution_time_seconds": total_execution_time / total if total > 0 else 0,
+            "completion_rate": by_status.get(TaskStatus.COMPLETED.value, 0) / total if total > 0 else 0,
+            "failed_tasks": failed_tasks[:5]  # Top 5 failed tasks
+        }
     
     async def get_task_dependencies(
         self,
@@ -454,21 +479,6 @@ class TaskService:
             task_id,
             metadata=current_metadata
         )
-    
-    async def get_task_statistics(
-        self,
-        project_id: UUID
-    ) -> Dict[str, Any]:
-        """
-        Get task statistics for a project.
-        
-        Args:
-            project_id: Project ID
-            
-        Returns:
-            Task statistics
-        """
-        return await self.task_repo.get_task_statistics(project_id)
     
     async def _can_start_task(self, task: Task) -> bool:
         """Check if task dependencies are resolved."""

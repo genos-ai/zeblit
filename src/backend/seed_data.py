@@ -17,8 +17,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from core.config import settings
-from models import Agent, ProjectTemplate
-from models.enums import AgentType, ModelProvider
+from src.backend.models import Agent, ProjectTemplate
+from src.backend.models.enums import AgentType, ModelProvider
 
 
 # Set up argument parser

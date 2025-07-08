@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 import logging
 
-from models import Project, User, project_collaborators
-from models.enums import ProjectStatus
+from src.backend.models import Project, User, project_collaborators
+from src.backend.models.enums import ProjectStatus
 from .base import BaseRepository
 
 logger = logging.getLogger(__name__)

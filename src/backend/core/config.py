@@ -6,7 +6,7 @@ All configuration is loaded from environment variables or .env file.
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings
@@ -35,10 +35,10 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=False, description="Debug mode")
     ENVIRONMENT: str = Field(default="development", description="Environment name")
     
-    # CORS settings
-    ALLOWED_ORIGINS: list[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8000"],
-        description="Allowed CORS origins"
+    # CORS settings - Keep as string for simple env var handling
+    ALLOWED_ORIGINS: str = Field(
+        default="http://localhost:3000,http://localhost:8000",
+        description="Allowed CORS origins (comma-separated)"
     )
     
     # Database settings
@@ -84,6 +84,38 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(
         default="redis://localhost:6379/0",
         description="Redis connection URL"
+    )
+    REDIS_HOST: str = Field(
+        default="localhost",
+        description="Redis host"
+    )
+    REDIS_PORT: int = Field(
+        default=6379,
+        description="Redis port"
+    )
+    REDIS_DB: int = Field(
+        default=0,
+        description="Redis database number"
+    )
+    REDIS_PASSWORD: Optional[str] = Field(
+        default=None,
+        description="Redis password"
+    )
+    REDIS_MAX_CONNECTIONS: int = Field(
+        default=50,
+        description="Maximum Redis connections in pool"
+    )
+    REDIS_DECODE_RESPONSES: bool = Field(
+        default=True,
+        description="Decode Redis responses to strings"
+    )
+    REDIS_CACHE_TTL_SECONDS: int = Field(
+        default=3600,
+        description="Default cache TTL in seconds (1 hour)"
+    )
+    REDIS_SESSION_TTL_SECONDS: int = Field(
+        default=86400,
+        description="Session TTL in seconds (24 hours)"
     )
     
     # AI API settings
@@ -165,17 +197,15 @@ class Settings(BaseSettings):
             v = v.replace("postgresql://", "postgresql+asyncpg://")
         return v
     
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    def parse_cors_origins(cls, v):
-        """Parse CORS origins from comma-separated string or list."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
-    
     @property
     def sync_database_url(self) -> str:
         """Get synchronous database URL for Alembic."""
         return self.DATABASE_URL.replace("+asyncpg", "")
+    
+    @property
+    def cors_origins(self) -> List[str]:
+        """Get CORS origins as a list."""
+        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
     
     class Config:
         """Pydantic config."""

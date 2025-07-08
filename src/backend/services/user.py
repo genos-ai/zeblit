@@ -11,11 +11,18 @@ import logging
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.backend.core.exceptions import NotFoundError, ValidationError, AuthorizationError, EmailAlreadyExistsError, UsernameAlreadyExistsError
+from src.backend.core.exceptions import (
+    NotFoundError,
+    ValidationError,
+    AuthorizationError,
+    EmailAlreadyExistsError,
+    UsernameAlreadyExistsError
+)
+from src.backend.core.cache import cache
 from src.backend.models import User
 from src.backend.models.enums import UserRole
 from src.backend.repositories import UserRepository, ProjectRepository
-from src.backend.schemas.user import UserCreate, UserUpdate, UserStats
+from src.backend.schemas.user import UserCreate, UserStats, UserUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +36,7 @@ class UserService:
         self.user_repo = UserRepository(db)
         self.project_repo = ProjectRepository(db)
     
+    @cache(prefix="user", ttl=300)  # Cache for 5 minutes
     async def get_user(self, user_id: UUID) -> User:
         """
         Get user by ID.

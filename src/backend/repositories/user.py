@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import logging
 
-from models import User
-from models.enums import UserRole
+from src.backend.models import User
+from src.backend.models.enums import UserRole
 from .base import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class UserRepository(BaseRepository[User]):
         user = await self.create(
             email=email,
             username=username,
-            password_hash=password_hash,
+            hashed_password=password_hash,
             full_name=full_name,
             role=role,
             **kwargs
@@ -118,7 +118,7 @@ class UserRepository(BaseRepository[User]):
         """
         return await self.update(
             user_id,
-            last_login_at=datetime.now(timezone.utc)
+            last_login=datetime.utcnow()
         )
     
     async def update_password(self, user_id: UUID, password_hash: str) -> Optional[User]:
@@ -134,8 +134,7 @@ class UserRepository(BaseRepository[User]):
         """
         user = await self.update(
             user_id,
-            password_hash=password_hash,
-            password_changed_at=datetime.now(timezone.utc)
+            hashed_password=password_hash
         )
         
         if user:
@@ -155,8 +154,7 @@ class UserRepository(BaseRepository[User]):
         """
         return await self.update(
             user_id,
-            email_verified=True,
-            email_verified_at=datetime.now(timezone.utc)
+            email_verified=True
         )
     
     async def get_active_users(
@@ -240,7 +238,7 @@ class UserRepository(BaseRepository[User]):
         self,
         user_id: UUID,
         tokens_used: int = 0,
-        api_calls: int = 0
+        cost_used: float = 0.0
     ) -> Optional[User]:
         """
         Update user's usage statistics.
@@ -248,7 +246,7 @@ class UserRepository(BaseRepository[User]):
         Args:
             user_id: User's ID
             tokens_used: Tokens to add to current month's usage
-            api_calls: API calls to add to current count
+            cost_used: Cost to add to current month's usage
             
         Returns:
             Updated user instance
@@ -258,13 +256,13 @@ class UserRepository(BaseRepository[User]):
             return None
         
         # Update usage stats
-        current_tokens = user.tokens_used_this_month or 0
-        current_calls = user.api_calls_count or 0
+        current_tokens = user.current_month_tokens or 0
+        current_cost = user.current_month_cost or 0.0
         
         return await self.update(
             user_id,
-            tokens_used_this_month=current_tokens + tokens_used,
-            api_calls_count=current_calls + api_calls
+            current_month_tokens=current_tokens + tokens_used,
+            current_month_cost=current_cost + cost_used
         )
     
     async def reset_monthly_usage(self) -> int:
@@ -280,8 +278,8 @@ class UserRepository(BaseRepository[User]):
         
         count = 0
         for user in users:
-            if user.tokens_used_this_month > 0:
-                await self.update(user.id, tokens_used_this_month=0)
+            if user.current_month_tokens > 0:
+                await self.update(user.id, current_month_tokens=0, current_month_cost=0.0)
                 count += 1
         
         logger.info(f"Reset monthly usage for {count} users")

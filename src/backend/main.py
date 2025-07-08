@@ -19,6 +19,8 @@ from src.backend.core.database import create_tables
 from src.backend.core.middleware import configure_middleware
 from src.backend.core.exceptions import BaseAPIException
 from src.backend.api.v1 import router as v1_router
+from src.backend.core.redis_client import redis_client
+from src.backend.core.message_bus import message_bus
 
 # Configure logging
 logging.basicConfig(
@@ -43,8 +45,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         logger.info("Creating database tables...")
         await create_tables()
     
+    # Initialize Redis connection pool
+    await redis_client.connect()
+    
+    # Start message bus
+    await message_bus.start()
+    
     # Future startup tasks:
-    # - Initialize Redis connection pool
     # - Start background tasks
     # - Connect to external services
     
@@ -53,8 +60,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     # Shutdown
     logger.info("Shutting down application...")
     
+    # Stop message bus
+    await message_bus.stop()
+    
+    # Close Redis connections
+    await redis_client.disconnect()
+    
     # Future shutdown tasks:
-    # - Close Redis connections
     # - Cancel background tasks
     # - Cleanup resources
 
@@ -73,8 +85,8 @@ app = FastAPI(
 # Configure middleware
 configure_middleware(app)
 
-# Include routers
-app.include_router(v1_router)
+# Include routers with proper prefix
+app.include_router(v1_router, prefix="/api/v1")
 
 
 # Exception handlers

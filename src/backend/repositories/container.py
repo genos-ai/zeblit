@@ -6,7 +6,7 @@ Provides container-specific database operations.
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Container
+from src.backend.models import Container
 from .base import BaseRepository
 
 

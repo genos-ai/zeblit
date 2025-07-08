@@ -30,17 +30,16 @@ class UserCreate(UserBase):
     
     password: str = Field(..., min_length=8, description="User password")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "email": "user@example.com",
-                "username": "johndoe",
-                "password": "securepassword123",
-                "full_name": "John Doe",
-                "is_active": True,
-                "role": "user"
-            }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "email": "user@example.com",
+            "username": "johndoe",
+            "password": "securepassword123",
+            "full_name": "John Doe",
+            "is_active": True,
+            "role": "user"
         }
+    })
 
 
 class UserUpdate(BaseModel):
@@ -52,16 +51,15 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = Field(None, description="Whether user is active")
     preferences: Optional[Dict[str, Any]] = Field(None, description="User preferences")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "full_name": "John M. Doe",
-                "preferences": {
-                    "theme": "dark",
-                    "notifications": True
-                }
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "full_name": "John M. Doe",
+            "preferences": {
+                "theme": "dark",
+                "notifications": True
             }
         }
+    })
 
 
 class UserResponse(UserBase):
@@ -76,10 +74,9 @@ class UserResponse(UserBase):
     monthly_token_limit: int = Field(..., description="Monthly token limit")
     monthly_cost_limit: float = Field(..., description="Monthly cost limit in USD")
     
-    model_config = ConfigDict(from_attributes=True)
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "email": "user@example.com",
@@ -91,14 +88,12 @@ class UserResponse(UserBase):
                 "updated_at": "2024-01-01T00:00:00Z",
                 "last_login": "2024-01-10T10:00:00Z",
                 "login_count": 5,
-                "preferences": {
-                    "theme": "dark",
-                    "notifications": True
-                },
+                "preferences": {"theme": "dark"},
                 "monthly_token_limit": 1000000,
-                "monthly_cost_limit": 100.0
+                "monthly_cost_limit": 50.0
             }
         }
+    )
 
 
 class UserProfile(BaseModel):
@@ -130,17 +125,16 @@ class UserStats(BaseModel):
     task_count: int = Field(..., description="Total number of tasks")
     completed_tasks: int = Field(..., description="Number of completed tasks")
     
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "user_id": "123e4567-e89b-12d3-a456-426614174000",
-                "tokens_used_this_month": 250000,
-                "cost_this_month": 25.50,
-                "tokens_remaining": 750000,
-                "cost_remaining": 74.50,
-                "project_count": 10,
-                "active_projects": 3,
-                "task_count": 150,
-                "completed_tasks": 120
-            }
-        } 
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "user_id": "123e4567-e89b-12d3-a456-426614174000",
+            "tokens_used_this_month": 250000,
+            "cost_this_month": 25.50,
+            "tokens_remaining": 750000,
+            "cost_remaining": 74.50,
+            "project_count": 10,
+            "active_projects": 3,
+            "task_count": 150,
+            "completed_tasks": 120
+        }
+    }) 

@@ -12,7 +12,7 @@ from sqlalchemy import select, func, and_, or_, desc, asc
 from sqlalchemy.orm import selectinload, joinedload
 import logging
 
-from models.base import Base
+from src.backend.models.base import Base
 
 logger = logging.getLogger(__name__)
 
