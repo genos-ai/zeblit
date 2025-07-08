@@ -15,6 +15,7 @@ from .projects import router as projects_router
 from .agents import router as agents_router
 from .websocket import router as websocket_router
 from .console import router as console_router
+from .containers import router as containers_router
 
 __all__ = [
     "health_router",
@@ -24,4 +25,5 @@ __all__ = [
     "agents_router",
     "websocket_router",
     "console_router",
+    "containers_router",
 ] 

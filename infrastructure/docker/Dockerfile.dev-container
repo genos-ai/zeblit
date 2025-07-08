@@ -1,0 +1,115 @@
+# Base development container for AI Development Platform
+# Version: 1.0.0
+
+FROM python:3.12-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    # Development tools
+    git \
+    curl \
+    wget \
+    vim \
+    nano \
+    # Build essentials
+    build-essential \
+    gcc \
+    g++ \
+    make \
+    # Node.js dependencies
+    ca-certificates \
+    gnupg \
+    # Python development
+    python3-dev \
+    python3-pip \
+    # Network tools
+    iputils-ping \
+    net-tools \
+    # Process management
+    supervisor \
+    # Clean up
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20.x
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create workspace directory
+RUN mkdir -p /workspace && chmod 777 /workspace
+WORKDIR /workspace
+
+# Install global npm packages
+RUN npm install -g \
+    typescript \
+    @types/node \
+    tsx \
+    nodemon \
+    prettier \
+    eslint \
+    vite \
+    create-vite
+
+# Install Python packages
+RUN pip install --no-cache-dir \
+    # Web frameworks
+    fastapi \
+    uvicorn[standard] \
+    django \
+    flask \
+    # Data science
+    numpy \
+    pandas \
+    matplotlib \
+    # Development tools
+    ipython \
+    jupyter \
+    black \
+    flake8 \
+    mypy \
+    pytest \
+    # Database
+    sqlalchemy \
+    psycopg2-binary \
+    # HTTP clients
+    httpx \
+    requests \
+    # Async
+    asyncio \
+    aiohttp \
+    # Utilities
+    python-dotenv \
+    pydantic
+
+# Create non-root user
+RUN useradd -m -s /bin/bash developer \
+    && usermod -aG sudo developer \
+    && echo "developer ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Set up bashrc
+RUN echo 'export PS1="\[\033[01;32m\]\u@ai-dev\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/developer/.bashrc \
+    && echo 'alias ll="ls -alF"' >> /home/developer/.bashrc \
+    && echo 'alias la="ls -A"' >> /home/developer/.bashrc \
+    && echo 'alias l="ls -CF"' >> /home/developer/.bashrc
+
+# Copy entrypoint script
+COPY infrastructure/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Switch to non-root user
+USER developer
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV PYTHONPATH=/workspace
+ENV PATH="/home/developer/.local/bin:${PATH}"
+
+# Expose common development ports
+EXPOSE 3000 3001 5173 8000 8080 5432 6379
+
+# Default command
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/bin/bash"] 

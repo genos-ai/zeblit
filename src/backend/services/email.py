@@ -5,7 +5,7 @@ Email service for sending transactional emails.
 *Author: AI Development Platform Team*
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from uuid import UUID
 import logging
 import httpx
@@ -35,63 +35,52 @@ class EmailService:
     
     async def send_email(
         self,
-        to: List[str],
+        to: Union[str, List[str]],
         subject: str,
-        html_content: str,
-        text_content: Optional[str] = None,
-        reply_to: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None
-    ) -> str:
+        html: str,
+        text: Optional[str] = None,
+        from_email: Optional[str] = None,
+        from_name: Optional[str] = None,
+    ) -> bool:
         """
-        Send an email via Resend API.
+        Send an email using Resend.
         
         Args:
-            to: List of recipient emails
+            to: Recipient email address(es)
             subject: Email subject
-            html_content: HTML email content
-            text_content: Plain text content (optional)
-            reply_to: Reply-to email (optional)
-            tags: Email tags for tracking (optional)
+            html: HTML content
+            text: Plain text content (optional)
+            from_email: Sender email (optional, uses default)
+            from_name: Sender name (optional, uses default)
             
         Returns:
-            Email ID from Resend
-            
-        Raises:
-            ServiceError: If email fails to send
+            True if email sent successfully, False otherwise
         """
-        payload = {
-            "from": f"{self.from_name} <{self.from_email}>",
-            "to": to,
-            "subject": subject,
-            "html": html_content
-        }
-        
-        if text_content:
-            payload["text"] = text_content
-        if reply_to:
-            payload["reply_to"] = reply_to
-        if tags:
-            payload["tags"] = tags
+        if not self.is_configured:
+            logger.warning("Email service not configured")
+            return False
         
         try:
-            response = await self.client.post(
-                f"{self.base_url}/emails",
-                json=payload
-            )
-            response.raise_for_status()
+            # Prepare email data
+            email_data = {
+                "from": f"{from_name or settings.EMAIL_FROM_NAME} <{from_email or settings.EMAIL_FROM_ADDRESS}>",
+                "to": to if isinstance(to, list) else [to],
+                "subject": subject,
+                "html": html,
+            }
             
-            data = response.json()
-            email_id = data.get("id")
+            if text:
+                email_data["text"] = text
             
-            logger.info(f"Email sent successfully: {email_id}")
-            return email_id
+            # Send email
+            response = self.resend.Emails.send(email_data)
             
-        except httpx.HTTPStatusError as e:
-            logger.error(f"Failed to send email: {e.response.text}")
-            raise ServiceError(f"Failed to send email: {e.response.text}")
+            logger.info(f"Email sent successfully to {to}")
+            return True
+            
         except Exception as e:
-            logger.error(f"Unexpected error sending email: {e}")
-            raise ServiceError(f"Failed to send email: {str(e)}")
+            logger.error(f"Failed to send email: {e}")
+            return False
     
     async def send_welcome_email(self, user: User) -> str:
         """

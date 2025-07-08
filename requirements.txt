@@ -27,6 +27,9 @@ resend
 httpx
 aiohttp
 
+# Container management
+docker
+
 # Development
 pytest
 pytest-asyncio

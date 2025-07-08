@@ -1,5 +1,5 @@
 """
-Application configuration settings.
+Application configuration and settings.
 
 All configuration is loaded from environment variables or .env file.
 """
@@ -66,19 +66,37 @@ class Settings(BaseSettings):
         description="Refresh token expiration in days"
     )
     
-    # Email settings (Resend)
-    RESEND_API_KEY: str = Field(
-        default="re_test_key",
-        description="Resend API key"
-    )
-    EMAIL_FROM: str = Field(
-        default="noreply@example.com",
-        description="Default from email address"
-    )
-    EMAIL_FROM_NAME: str = Field(
-        default="AI Development Platform",
-        description="Default from name"
-    )
+    # Email Settings (Resend)
+    RESEND_API_KEY: Optional[str] = None
+    EMAIL_FROM_ADDRESS: str = "noreply@ai-platform.com"
+    EMAIL_FROM_NAME: str = "AI Development Platform"
+    
+    # Container Settings
+    CONTAINER_BASE_IMAGE: str = "python:3.12-slim"
+    CONTAINER_CPU_LIMIT: float = 2.0  # CPU cores
+    CONTAINER_MEMORY_LIMIT: int = 4096  # MB
+    CONTAINER_DISK_LIMIT: int = 10240  # MB
+    CONTAINER_AUTO_SLEEP_MINUTES: int = 30
+    CONTAINER_AUTO_STOP_HOURS: int = 24
+    CONTAINER_AUTO_DELETE_DAYS: int = 7
+    CONTAINER_MAX_PER_USER: int = 5
+    CONTAINER_NETWORK_NAME: str = "ai-platform-network"
+    CONTAINER_HEALTH_CHECK_INTERVAL: int = 60  # seconds
+    CONTAINER_CLEANUP_INTERVAL: int = 3600  # seconds (1 hour)
+    
+    # Container Resource Limits
+    CONTAINER_MIN_CPU: float = 0.5
+    CONTAINER_MAX_CPU: float = 4.0
+    CONTAINER_MIN_MEMORY: int = 512  # MB
+    CONTAINER_MAX_MEMORY: int = 8192  # MB
+    CONTAINER_MIN_DISK: int = 1024  # MB
+    CONTAINER_MAX_DISK: int = 20480  # MB
+    
+    # Feature Flags
+    ENABLE_CONTAINERS: bool = True
+    ENABLE_WEBSOCKETS: bool = True
+    ENABLE_AI_AGENTS: bool = True
+    ENABLE_CONSOLE_CAPTURE: bool = True
     
     # Redis settings
     REDIS_URL: str = Field(
@@ -140,15 +158,6 @@ class Settings(BaseSettings):
     COMPLEX_MODEL: str = Field(
         default="claude-opus-4-20250514",
         description="Model for complex tasks"
-    )
-    
-    # Container settings
-    CONTAINER_CPU_LIMIT: str = Field(default="2", description="CPU cores per container")
-    CONTAINER_MEMORY_LIMIT: str = Field(default="4g", description="Memory per container")
-    CONTAINER_STORAGE_LIMIT: str = Field(default="10g", description="Storage per container")
-    CONTAINER_IDLE_TIMEOUT_MINUTES: int = Field(
-        default=30,
-        description="Minutes before idle container sleeps"
     )
     
     # User limits

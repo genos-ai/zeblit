@@ -18,6 +18,7 @@ from src.backend.api.v1.endpoints import (
     agents_router,
     websocket_router,
     console_router,
+    containers_router,
 )
 
 # Create v1 router
@@ -31,12 +32,12 @@ api_router.include_router(projects_router)
 api_router.include_router(agents_router)
 api_router.include_router(websocket_router)
 api_router.include_router(console_router)
+api_router.include_router(containers_router)
 
 # Future routers will be added here:
 # router.include_router(conversations_router, prefix="/conversations", tags=["conversations"])
 # router.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
 # router.include_router(files_router, prefix="/files", tags=["files"])
-# router.include_router(containers_router, prefix="/containers", tags=["containers"])
 
 # Export as router for main.py
 router = api_router 

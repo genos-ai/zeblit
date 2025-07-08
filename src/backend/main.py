@@ -21,6 +21,9 @@ from src.backend.core.exceptions import BaseAPIException
 from src.backend.api.v1 import router as v1_router
 from src.backend.core.redis_client import redis_client
 from src.backend.core.message_bus import message_bus
+from src.backend.core.orbstack_client import orbstack_client
+from src.backend.services.container import container_service
+from src.backend.core.cache import cache_manager
 
 # Configure logging
 logging.basicConfig(
@@ -166,6 +169,52 @@ async def root():
         "docs": "/api/docs",
         "health": "/api/v1/health"
     }
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Run startup tasks."""
+    logger.info("Starting AI Development Platform API...")
+    
+    # Initialize Redis connection
+    await redis_client.connect()
+    
+    # Initialize cache
+    await cache_manager.initialize()
+    
+    # Start message bus
+    await message_bus.start()
+    
+    # Initialize OrbStack client (if containers enabled)
+    if settings.ENABLE_CONTAINERS:
+        try:
+            await orbstack_client.connect()
+            # Start container background tasks
+            await container_service.start_background_tasks()
+        except Exception as e:
+            logger.warning(f"Container support disabled: {e}")
+            settings.ENABLE_CONTAINERS = False
+    
+    logger.info("Startup complete")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Run shutdown tasks."""
+    logger.info("Shutting down AI Development Platform API...")
+    
+    # Stop container background tasks
+    if settings.ENABLE_CONTAINERS:
+        await container_service.stop_background_tasks()
+        await orbstack_client.disconnect()
+    
+    # Stop message bus
+    await message_bus.stop()
+    
+    # Close Redis connection
+    await redis_client.disconnect()
+    
+    logger.info("Shutdown complete")
 
 
 # CLI entry point

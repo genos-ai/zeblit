@@ -104,10 +104,54 @@ This is a simplified checklist for quick daily reference. See `docs/3. implement
 - [ ] Unit tests
 - [ ] Integration tests
 
-#### 🔵 Phase 2: Container Management (0%)
-- [ ] OrbStack/Docker integration
-- [ ] Container lifecycle management
-- [ ] File system abstraction
+## Phase 2: Container Management System (Week 3-4)
+
+### OrbStack Integration
+- [x] Create OrbStack client wrapper
+- [x] Implement container creation
+- [x] Implement container lifecycle management
+  - [x] Start container
+  - [x] Stop container
+  - [x] Restart container
+  - [x] Delete container
+- [x] Configure resource limits
+- [x] Set up volume mounting
+- [x] Implement container health checks
+- [x] Create container networking
+- [x] Add container metrics collection
+
+### Container Service Implementation
+- [x] Create base container image
+  - [x] Install Python 3.12
+  - [x] Install Node.js 20
+  - [x] Install common dev tools
+  - [x] Configure user permissions
+- [x] Implement container pool management
+- [x] Create container assignment logic
+- [x] Implement auto-sleep functionality
+- [x] Create wake-up mechanism
+- [x] Add container cleanup routines
+- [x] Implement resource monitoring
+
+### Container API Endpoints
+- [x] GET /api/projects/{id}/container
+- [x] POST /api/projects/{id}/container/start
+- [x] POST /api/projects/{id}/container/stop
+- [x] POST /api/projects/{id}/container/restart
+- [x] GET /api/projects/{id}/container/logs
+- [x] GET /api/projects/{id}/container/stats
+- [x] GET /api/containers/pool/status
+
+### File System Integration
+- [ ] Create file system abstraction
+- [ ] Implement file CRUD operations
+- [ ] Set up file watching
+- [ ] Implement file sync to container
+- [ ] Create file versioning
+- [ ] Add file size limits
+- [ ] Implement file type validation
+
+**Progress**: Phase 2 at 80% complete (File system integration remaining)
 
 #### 🔵 Phase 3: AI Agents (0%)
 - [ ] LLM integration (Anthropic, OpenAI)
