@@ -1,230 +1,142 @@
 """
-Main FastAPI application for the AI Development Platform.
+Main entry point for the AI Development Platform backend.
 
-This module creates and configures the FastAPI application instance
-with all middleware, routers, and event handlers.
+Initializes the FastAPI application with all routes, middleware,
+and configurations.
 """
 
-import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+import os
+from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import structlog
 
+from src.backend.api.v1 import api_router
 from src.backend.core.config import settings
-from src.backend.core.database import create_tables
-from src.backend.core.middleware import configure_middleware
-from src.backend.core.exceptions import BaseAPIException
-from src.backend.api.v1 import router as v1_router
-from src.backend.core.redis_client import redis_client
-from src.backend.core.message_bus import message_bus
-from src.backend.core.orbstack_client import orbstack_client
-from src.backend.services.container import container_service
-from src.backend.core.cache import cache_manager
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO if not settings.DEBUG else logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+from src.backend.core.database import init_db
+from src.backend.core.middleware import (
+    RequestTrackingMiddleware,
+    PerformanceMiddleware,
+    ErrorHandlingMiddleware,
+    CORSMiddleware as CustomCORSMiddleware,
 )
-logger = logging.getLogger(__name__)
+from src.backend.config.logging_config import setup_logging, get_logger
+
+# Initialize logging first before any other imports use it
+setup_logging(
+    app_name="ai_dev_platform",
+    log_level=settings.log_level,
+    environment=settings.environment
+)
+
+# Get logger after setup
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator:
-    """
-    Manage application lifecycle events.
-    
-    Handles startup and shutdown tasks.
-    """
+async def lifespan(app: FastAPI):
+    """Handle application startup and shutdown events."""
     # Startup
-    logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION}")
+    logger.info(
+        "Starting AI Development Platform",
+        version=settings.version,
+        environment=settings.environment,
+        debug=settings.debug,
+    )
     
-    # Create database tables if needed (for development)
-    if settings.ENVIRONMENT == "development":
-        logger.info("Creating database tables...")
-        await create_tables()
+    # Initialize database
+    logger.info("Initializing database")
+    await init_db()
     
-    # Initialize Redis connection pool
-    await redis_client.connect()
+    # Create necessary directories
+    upload_dir = Path("uploads")
+    upload_dir.mkdir(exist_ok=True)
     
-    # Start message bus
-    await message_bus.start()
-    
-    # Future startup tasks:
-    # - Start background tasks
-    # - Connect to external services
+    logger.info("Application startup complete")
     
     yield
     
     # Shutdown
-    logger.info("Shutting down application...")
-    
-    # Stop message bus
-    await message_bus.stop()
-    
-    # Close Redis connections
-    await redis_client.disconnect()
-    
-    # Future shutdown tasks:
-    # - Cancel background tasks
-    # - Cleanup resources
+    logger.info("Shutting down AI Development Platform")
 
 
-# Create FastAPI application
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="AI-powered development platform with collaborative agents",
-    version=settings.VERSION,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
-    lifespan=lifespan,
-)
-
-# Configure middleware
-configure_middleware(app)
-
-# Include routers with proper prefix
-app.include_router(v1_router, prefix="/api/v1")
-
-
-# Exception handlers
-@app.exception_handler(BaseAPIException)
-async def base_api_exception_handler(request: Request, exc: BaseAPIException):
-    """Handle custom API exceptions."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-            "error_type": exc.error_type,
-            "request_id": getattr(request.state, "request_id", "unknown")
-        },
-        headers=getattr(exc, "headers", None)
-    )
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle request validation errors."""
-    return JSONResponse(
-        status_code=422,
-        content={
-            "detail": "Validation error",
-            "error_type": "ValidationError",
-            "errors": exc.errors(),
-            "request_id": getattr(request.state, "request_id", "unknown")
-        }
-    )
-
-
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle Starlette HTTP exceptions."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "detail": exc.detail,
-            "error_type": "HTTPException",
-            "request_id": getattr(request.state, "request_id", "unknown")
-        }
-    )
-
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected exceptions."""
-    logger.error(
-        f"Unhandled exception: {exc}",
-        exc_info=True,
-        extra={"request_id": getattr(request.state, "request_id", "unknown")}
+def create_application() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    app = FastAPI(
+        title=settings.project_name,
+        version=settings.version,
+        docs_url="/api/docs" if settings.debug else None,
+        redoc_url="/api/redoc" if settings.debug else None,
+        openapi_url="/api/openapi.json" if settings.debug else None,
+        lifespan=lifespan,
     )
     
-    # Don't expose internal errors in production
-    if settings.DEBUG:
-        detail = f"{type(exc).__name__}: {str(exc)}"
-    else:
-        detail = "Internal server error"
+    # Configure middleware (order matters - outermost first)
+    app.add_middleware(ErrorHandlingMiddleware)
+    app.add_middleware(PerformanceMiddleware, slow_request_threshold=3.0)
+    app.add_middleware(RequestTrackingMiddleware)
     
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": detail,
-            "error_type": "InternalError",
-            "request_id": getattr(request.state, "request_id", "unknown")
-        }
+    # Configure CORS
+    app.add_middleware(
+        CustomCORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
+    
+    # Include API routes
+    app.include_router(api_router, prefix=settings.api_v1_str)
+    
+    # Mount static files if in development
+    if settings.debug:
+        static_dir = Path("static")
+        if static_dir.exists():
+            app.mount("/static", StaticFiles(directory="static"), name="static")
+    
+    logger.info(
+        "FastAPI application created",
+        routes_count=len(app.routes),
+        middleware_count=len(app.middleware),
+    )
+    
+    return app
 
 
-# Root endpoint
-@app.get("/", include_in_schema=False)
+# Create the application instance
+app = create_application()
+
+
+@app.get("/", tags=["root"])
 async def root():
-    """Root endpoint redirect to API docs."""
+    """Root endpoint - redirects to API documentation."""
     return {
-        "message": f"Welcome to {settings.PROJECT_NAME}",
-        "version": settings.VERSION,
-        "docs": "/api/docs",
-        "health": "/api/v1/health"
+        "message": "Welcome to the AI Development Platform API",
+        "documentation": f"{settings.api_v1_str}/docs",
+        "version": settings.version,
     }
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Run startup tasks."""
-    logger.info("Starting AI Development Platform API...")
-    
-    # Initialize Redis connection
-    await redis_client.connect()
-    
-    # Initialize cache
-    await cache_manager.initialize()
-    
-    # Start message bus
-    await message_bus.start()
-    
-    # Initialize OrbStack client (if containers enabled)
-    if settings.ENABLE_CONTAINERS:
-        try:
-            await orbstack_client.connect()
-            # Start container background tasks
-            await container_service.start_background_tasks()
-        except Exception as e:
-            logger.warning(f"Container support disabled: {e}")
-            settings.ENABLE_CONTAINERS = False
-    
-    logger.info("Startup complete")
+@app.get("/health", tags=["health"])
+async def health_check():
+    """Basic health check endpoint."""
+    return {
+        "status": "healthy",
+        "version": settings.version,
+        "environment": settings.environment,
+    }
 
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Run shutdown tasks."""
-    logger.info("Shutting down AI Development Platform API...")
-    
-    # Stop container background tasks
-    if settings.ENABLE_CONTAINERS:
-        await container_service.stop_background_tasks()
-        await orbstack_client.disconnect()
-    
-    # Stop message bus
-    await message_bus.stop()
-    
-    # Close Redis connection
-    await redis_client.disconnect()
-    
-    logger.info("Shutdown complete")
-
-
-# CLI entry point
 if __name__ == "__main__":
     import uvicorn
     
     uvicorn.run(
-        "main:app",
+        "src.backend.main:app",
         host="0.0.0.0",
         port=8000,
-        reload=settings.DEBUG,
-        log_level="debug" if settings.DEBUG else "info",
+        reload=settings.debug,
+        log_level=settings.log_level.lower(),
     ) 

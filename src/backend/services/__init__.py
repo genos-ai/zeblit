@@ -13,6 +13,7 @@ from .agent import AgentService
 from .conversation import ConversationService
 from .task import TaskService
 from .email import EmailService
+from .file import FileService
 
 __all__ = [
     "AuthService",
@@ -22,4 +23,5 @@ __all__ = [
     "ConversationService",
     "TaskService",
     "EmailService",
+    "FileService",
 ] 

@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     APP_NAME: str = Field(default="AI Development Platform", description="Application name")
     APP_URL: str = Field(default="http://localhost:3000", description="Frontend application URL")
     API_V1_STR: str = Field(default="/api/v1", description="API version string")
-    DEBUG: bool = Field(default=False, description="Debug mode")
-    ENVIRONMENT: str = Field(default="development", description="Environment name")
+    debug: bool = Field(default=True, alias="DEBUG")
+    environment: str = Field(default="development", alias="ENVIRONMENT")
     
     # CORS settings - Keep as string for simple env var handling
     ALLOWED_ORIGINS: str = Field(
@@ -171,8 +171,8 @@ class Settings(BaseSettings):
     )
     
     # Logging
-    LOG_LEVEL: str = Field(default="INFO", description="Logging level")
-    LOG_FORMAT: str = Field(
+    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    log_format: str = Field(
         default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         description="Log format"
     )

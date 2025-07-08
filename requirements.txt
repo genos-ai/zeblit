@@ -30,6 +30,11 @@ aiohttp
 # Container management
 docker
 
+# File handling
+python-magic
+aiofiles
+psutil
+
 # Development
 pytest
 pytest-asyncio

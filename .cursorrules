@@ -426,6 +426,23 @@ interface WSMessage {
 - Cache LLM responses when appropriate
 - Background jobs for heavy processing
 
+## Logging Standards
+- **Use structlog** for all logging operations
+- Follow standards in `docs/python-logging-rules.md`
+- Always use structured logging (key-value pairs)
+- Include request IDs in all web requests
+- Log performance metrics for slow operations (>1s)
+- Use appropriate log levels:
+  - DEBUG: Detailed information for diagnosing problems
+  - INFO: General informational messages
+  - WARNING: Something unexpected but not critical
+  - ERROR: Error events but application continues
+  - CRITICAL: Serious errors that may abort operations
+- Create module-specific loggers with `structlog.get_logger(__name__)`
+- Log AI agent decisions and LLM interactions
+- Track token usage and costs in structured logs
+- See `docs/python-logging-rules.md` for detailed patterns and examples
+
 ## Deployment Considerations
 - Health check endpoints required
 - Graceful shutdown handling
