@@ -66,12 +66,23 @@ class Settings(BaseSettings):
         description="Refresh token expiration in days"
     )
     
-    # Email Settings (Resend)
-    RESEND_API_KEY: Optional[str] = None
-    EMAIL_FROM_ADDRESS: str = "noreply@ai-platform.com"
-    EMAIL_FROM_NAME: str = "AI Development Platform"
+    # Email settings (using Resend)
+    resend_api_key: Optional[str] = Field(default=None, alias="RESEND_API_KEY")
+    email_from_address: str = Field(default="noreply@aidevplatform.com", alias="EMAIL_FROM_ADDRESS")
     
-    # Container Settings
+    # LLM Provider settings
+    anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
+    openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
+    google_api_key: Optional[str] = Field(default=None, alias="GOOGLE_API_KEY")
+    default_llm_provider: str = Field(default="anthropic", alias="DEFAULT_LLM_PROVIDER")
+    
+    # AI Agent settings
+    agent_default_model: str = Field(default="claude-3-sonnet", alias="AGENT_DEFAULT_MODEL")
+    agent_complex_model: str = Field(default="claude-3-opus", alias="AGENT_COMPLEX_MODEL")
+    agent_max_tokens: int = Field(default=4096, alias="AGENT_MAX_TOKENS")
+    agent_temperature: float = Field(default=0.7, alias="AGENT_TEMPERATURE")
+    
+    # Container settings
     CONTAINER_BASE_IMAGE: str = "python:3.12-slim"
     CONTAINER_CPU_LIMIT: float = 2.0  # CPU cores
     CONTAINER_MEMORY_LIMIT: int = 4096  # MB

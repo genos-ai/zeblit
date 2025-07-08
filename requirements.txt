@@ -27,6 +27,9 @@ resend
 httpx
 aiohttp
 
+# AI/LLM providers
+anthropic
+
 # Container management
 docker
 
