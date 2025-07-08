@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.backend.agents.base import BaseAgent
 from src.backend.agents.dev_manager import DevManagerAgent
+from src.backend.agents.product_manager import ProductManagerAgent
+from src.backend.agents.data_analyst import DataAnalystAgent
 # Import other agents as they are implemented
-# from src.backend.agents.product_manager import ProductManagerAgent
-# from src.backend.agents.data_analyst import DataAnalystAgent
 # from src.backend.agents.engineer import EngineerAgent
 # from src.backend.agents.architect import ArchitectAgent
 # from src.backend.agents.platform_engineer import PlatformEngineerAgent
@@ -31,9 +31,9 @@ class AgentFactory:
     # Registry of agent types to their implementations
     _agent_classes = {
         AgentType.DEVELOPMENT_MANAGER: DevManagerAgent,
+        AgentType.PRODUCT_MANAGER: ProductManagerAgent,
+        AgentType.DATA_ANALYST: DataAnalystAgent,
         # Add other agents as they are implemented
-        # AgentType.PRODUCT_MANAGER: ProductManagerAgent,
-        # AgentType.DATA_ANALYST: DataAnalystAgent,
         # AgentType.ENGINEER: EngineerAgent,
         # AgentType.ARCHITECT: ArchitectAgent,
         # AgentType.PLATFORM_ENGINEER: PlatformEngineerAgent,

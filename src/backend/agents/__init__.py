@@ -7,6 +7,8 @@ to help users build applications.
 
 from src.backend.agents.base import BaseAgent, AgentMessage, AgentState
 from src.backend.agents.dev_manager import DevManagerAgent
+from src.backend.agents.product_manager import ProductManagerAgent
+from src.backend.agents.data_analyst import DataAnalystAgent
 from src.backend.agents.factory import AgentFactory
 
 __all__ = [
@@ -14,5 +16,7 @@ __all__ = [
     "AgentMessage", 
     "AgentState",
     "DevManagerAgent",
+    "ProductManagerAgent",
+    "DataAnalystAgent",
     "AgentFactory",
 ] 
