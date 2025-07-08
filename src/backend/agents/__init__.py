@@ -9,6 +9,9 @@ from src.backend.agents.base import BaseAgent, AgentMessage, AgentState
 from src.backend.agents.dev_manager import DevManagerAgent
 from src.backend.agents.product_manager import ProductManagerAgent
 from src.backend.agents.data_analyst import DataAnalystAgent
+from src.backend.agents.engineer import EngineerAgent
+from src.backend.agents.architect import ArchitectAgent
+from src.backend.agents.platform_engineer import PlatformEngineerAgent
 from src.backend.agents.factory import AgentFactory
 
 __all__ = [
@@ -18,5 +21,8 @@ __all__ = [
     "DevManagerAgent",
     "ProductManagerAgent",
     "DataAnalystAgent",
+    "EngineerAgent",
+    "ArchitectAgent",
+    "PlatformEngineerAgent",
     "AgentFactory",
 ] 
