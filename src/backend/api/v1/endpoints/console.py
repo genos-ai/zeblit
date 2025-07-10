@@ -16,12 +16,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.backend.core.database import get_db
-from src.backend.api.dependencies import get_current_user
-from src.backend.models import User
-from src.backend.schemas.user import UserRead
+from src.backend.core.dependencies import get_current_user
+from src.backend.models.user import User
+from src.backend.schemas.user import UserResponse
 from src.backend.schemas.websocket import ConsoleLogPayload, ErrorLogPayload
-from src.backend.services.console import console_service
-from src.backend.services.project import project_service
+from src.backend.services.console import ConsoleService
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ async def get_project_console_logs(
         List of console log entries
     """
     # Check project access
-    project = await project_service.get_project_by_id(db, project_id, current_user)
+    project = await ConsoleService.get_project_by_id(db, project_id, current_user)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -59,7 +58,7 @@ async def get_project_console_logs(
         )
     
     # Get logs
-    logs = await console_service.get_recent_logs(
+    logs = await ConsoleService.get_recent_logs(
         project_id=project_id,
         count=count,
         level_filter=level
@@ -86,7 +85,7 @@ async def get_project_errors(
         List of error log entries
     """
     # Check project access
-    project = await project_service.get_project_by_id(db, project_id, current_user)
+    project = await ConsoleService.get_project_by_id(db, project_id, current_user)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -94,7 +93,7 @@ async def get_project_errors(
         )
     
     # Get errors
-    errors = await console_service.get_recent_errors(
+    errors = await ConsoleService.get_recent_errors(
         project_id=project_id,
         count=count
     )
@@ -118,7 +117,7 @@ async def get_project_console_stats(
         Dictionary with log counts by level
     """
     # Check project access
-    project = await project_service.get_project_by_id(db, project_id, current_user)
+    project = await ConsoleService.get_project_by_id(db, project_id, current_user)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -126,7 +125,7 @@ async def get_project_console_stats(
         )
     
     # Get stats
-    stats = await console_service.get_console_stats(project_id=project_id)
+    stats = await ConsoleService.get_console_stats(project_id=project_id)
     
     return stats
 
@@ -147,7 +146,7 @@ async def get_project_console_context(
         Console context including recent errors, warnings, logs, and statistics
     """
     # Check project access
-    project = await project_service.get_project_by_id(db, project_id, current_user)
+    project = await ConsoleService.get_project_by_id(db, project_id, current_user)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -155,7 +154,7 @@ async def get_project_console_context(
         )
     
     # Get AI context
-    context = await console_service.get_console_context_for_ai(project_id=project_id)
+    context = await ConsoleService.get_console_context_for_ai(project_id=project_id)
     
     return context
 
@@ -176,7 +175,7 @@ async def clear_project_logs(
         Success message
     """
     # Check project access
-    project = await project_service.get_project_by_id(db, project_id, current_user)
+    project = await ConsoleService.get_project_by_id(db, project_id, current_user)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -184,7 +183,7 @@ async def clear_project_logs(
         )
     
     # Clear logs
-    success = await console_service.clear_logs(project_id=project_id)
+    success = await ConsoleService.clear_logs(project_id=project_id)
     
     if not success:
         raise HTTPException(
@@ -213,7 +212,7 @@ async def store_console_log(
         Success message
     """
     # Check project access
-    project = await project_service.get_project_by_id(db, project_id, current_user)
+    project = await ConsoleService.get_project_by_id(db, project_id, current_user)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -221,7 +220,7 @@ async def store_console_log(
         )
     
     # Store log
-    await console_service.store_console_log(
+    await ConsoleService.store_console_log(
         project_id=project_id,
         user_id=current_user.id,
         log_data=log_data
@@ -248,7 +247,7 @@ async def store_error_log(
         Success message
     """
     # Check project access
-    project = await project_service.get_project_by_id(db, project_id, current_user)
+    project = await ConsoleService.get_project_by_id(db, project_id, current_user)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -256,7 +255,7 @@ async def store_error_log(
         )
     
     # Store error
-    await console_service.store_error_log(
+    await ConsoleService.store_error_log(
         project_id=project_id,
         user_id=current_user.id,
         error_data=error_data

@@ -15,14 +15,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.backend.core.config import settings
 from src.backend.core.exceptions import AuthenticationError, AuthorizationError, ValidationError
+from src.backend.core.auth import (
+    pwd_context,
+    verify_password,
+    get_password_hash,
+    create_access_token as _create_access_token,
+    create_refresh_token as _create_refresh_token,
+    decode_token as _decode_token
+)
 from src.backend.models.user import User
 from src.backend.models.enums import UserRole
 from src.backend.repositories.user import UserRepository
 
 logger = logging.getLogger(__name__)
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AuthService:

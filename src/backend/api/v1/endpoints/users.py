@@ -31,7 +31,6 @@ from src.backend.core.exceptions import (
 )
 
 router = APIRouter(
-    prefix="/users",
     tags=["users"],
     responses={404: {"description": "Not found"}},
 )

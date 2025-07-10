@@ -49,6 +49,14 @@ class WebSocketMessageType(str, Enum):
     GIT_PUSH = "git_push"
     GIT_COMMIT = "git_commit"
     GIT_BRANCH_CHANGE = "git_branch_change"
+    
+    # Project management
+    PROJECT_SUBSCRIBE = "project_subscribe"
+    PROJECT_UNSUBSCRIBE = "project_unsubscribe"
+    
+    # Code execution
+    CODE_EXECUTE = "code_execute"
+    CODE_RESULT = "code_result"
 
 
 class WebSocketMessage(BaseModel):
@@ -123,4 +131,29 @@ class ContainerStatusPayload(BaseModel):
     status: str = Field(..., description="Container status")
     cpu_usage: Optional[float] = Field(None, description="CPU usage percentage")
     memory_usage: Optional[float] = Field(None, description="Memory usage in MB")
-    disk_usage: Optional[float] = Field(None, description="Disk usage in MB") 
+    disk_usage: Optional[float] = Field(None, description="Disk usage in MB")
+
+
+class ProjectSubscribePayload(BaseModel):
+    """Project subscription payload."""
+    project_id: str = Field(..., description="Project ID to subscribe to")
+    subscribe_to: Optional[list] = Field(
+        default_factory=lambda: ["files", "tasks", "agents"],
+        description="Types of events to subscribe to"
+    )
+
+
+class CodeExecutePayload(BaseModel):
+    """Code execution payload."""
+    code: str = Field(..., description="Code to execute")
+    language: str = Field(..., description="Programming language")
+    context: Optional[Dict[str, Any]] = Field(None, description="Execution context")
+    timeout: Optional[int] = Field(30, description="Timeout in seconds")
+
+
+class CodeResultPayload(BaseModel):
+    """Code execution result payload."""
+    success: bool = Field(..., description="Whether execution was successful")
+    output: Optional[str] = Field(None, description="Execution output")
+    error: Optional[str] = Field(None, description="Error message if execution failed")
+    execution_time: Optional[float] = Field(None, description="Execution time in seconds") 

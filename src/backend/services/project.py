@@ -70,9 +70,18 @@ class ProjectService:
         # Apply template if specified
         template_type = None
         if template_id:
-            # TODO: Implement template application
-            # For now, just get the template type
-            template_type = "custom"
+            # Look up the template to get its type
+            from sqlalchemy import select
+            query = select(ProjectTemplate).where(ProjectTemplate.id == template_id)
+            result = await self.db.execute(query)
+            template = result.scalar_one_or_none()
+            
+            if template:
+                template_type = template.template_type
+                logger.info(f"Using template {template.name} with type {template_type}")
+            else:
+                logger.warning(f"Template with ID {template_id} not found, proceeding without template")
+                template_id = None  # Clear template_id if not found
         
         # Create project
         project = await self.project_repo.create_project(
@@ -298,6 +307,39 @@ class ProjectService:
             logger.info(f"Deleted project {project_id}")
         
         return success
+    
+    async def list_templates(self) -> List[ProjectTemplate]:
+        """
+        List available project templates.
+        
+        Returns:
+            List of active project templates
+        """
+        from sqlalchemy import select
+        
+        query = select(ProjectTemplate).where(
+            ProjectTemplate.is_active == True
+        ).order_by(ProjectTemplate.is_featured.desc(), ProjectTemplate.name)
+        
+        result = await self.db.execute(query)
+        return result.scalars().all()
+    
+    async def get_project_with_access_check(
+        self,
+        project_id: UUID,
+        user_id: UUID
+    ) -> Project:
+        """
+        Get project with access check (alias for get_project).
+        
+        Args:
+            project_id: Project ID
+            user_id: User requesting access
+            
+        Returns:
+            Project instance
+        """
+        return await self.get_project(project_id, user_id)
     
     async def add_collaborator(
         self,

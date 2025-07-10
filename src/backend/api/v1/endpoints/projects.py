@@ -31,7 +31,6 @@ from src.backend.core.exceptions import (
 )
 
 router = APIRouter(
-    prefix="/projects",
     tags=["projects"],
     responses={404: {"description": "Not found"}},
 )
@@ -63,13 +62,16 @@ async def list_projects(
     project_service = ProjectService(db)
     
     # Get projects
-    projects, total = await project_service.list_user_projects(
+    projects_data = await project_service.get_user_projects(
         user_id=current_user.id,
         skip=skip,
         limit=limit,
         include_archived=include_archived,
-        search=search,
     )
+    
+    # Combine owned and collaborated projects
+    projects = projects_data["owned"] + projects_data["collaborated"]
+    total = projects_data["total"]
     
     # Convert to response models
     project_responses = [

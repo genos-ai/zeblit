@@ -25,8 +25,7 @@ from src.backend.core.llm import (
 from src.backend.core.redis_client import redis_client
 from src.backend.models.agent import Agent as AgentModel, AgentType
 from src.backend.models.task import Task, TaskStatus
-from src.backend.models.conversation import Conversation
-from src.backend.models.agent_message import AgentMessage as AgentMessageModel
+from src.backend.models.conversation import Conversation, AgentMessage as AgentMessageModel
 from src.backend.config.logging_config import get_logger, log_operation
 from src.backend.services.task import TaskService
 from src.backend.services.conversation import ConversationService

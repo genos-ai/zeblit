@@ -1,24 +1,39 @@
 #!/usr/bin/env python3
 """
-Seed data script for AI Development Platform.
+Seed data script for development environment.
 
-Populates the database with essential data:
-- 6 AI agents with proper configurations
-- Project templates for common frameworks
-- Default system configurations
+This script populates the database with initial data for testing.
 """
 
 import asyncio
-import asyncpg
+import sys
+import os
 import argparse
 import logging
-from datetime import datetime
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from pathlib import Path
+from datetime import datetime, timezone
 
-from core.config import settings
-from src.backend.models import Agent, ProjectTemplate
-from src.backend.models.enums import AgentType, ModelProvider
+# Add project root to path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+# Skip email validation for seed data
+os.environ["EMAIL_VALIDATION_SKIP_DELIVERABILITY"] = "true"
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
+
+from src.backend.core.config import settings
+from src.backend.core.database import AsyncSessionLocal
+from src.backend.models.user import User
+from src.backend.models.project import Project
+from src.backend.models.agent import Agent, AgentType
+from src.backend.models.project_template import ProjectTemplate
+from src.backend.models.container import Container
+from src.backend.models.task import Task
+from src.backend.models.conversation import Conversation, AgentMessage
+from src.backend.core.auth import get_password_hash
 
 
 # Set up argument parser
@@ -36,6 +51,59 @@ else:
     logging.basicConfig(level=logging.WARNING, format='%(levelname)s - %(message)s')
 
 logger = logging.getLogger(__name__)
+
+
+async def create_default_users(session: AsyncSession):
+    """Create default admin and regular users for testing."""
+    
+    users_data = [
+        {
+            "email": "user@zeblit.com",
+            "username": "zeblituser",
+            "full_name": "Zeblit User",
+            "password": "password123",
+            "is_active": True,
+            "email_verified": True,
+            "role": "user",
+        },
+        {
+            "email": "admin@zeblit.com",
+            "username": "zeblitadmin",
+            "full_name": "Zeblit Admin",
+            "password": "admin123",
+            "is_active": True,
+            "email_verified": True,
+            "role": "admin",
+        }
+    ]
+    
+    created_users = []
+    for user_data in users_data:
+        # Check if user already exists
+        existing = await session.execute(
+            select(User).where(User.email == user_data["email"])
+        )
+        if existing.scalar_one_or_none():
+            if args.verbose:
+                print(f"⚠️  User {user_data['email']} already exists, skipping...")
+            logger.info(f"User {user_data['email']} already exists, skipping...")
+            continue
+        
+        # Create new user
+        password = user_data.pop("password")
+        user = User(
+            **user_data,
+            hashed_password=get_password_hash(password)
+        )
+        session.add(user)
+        created_users.append(user)
+        if args.verbose:
+            print(f"✅ Created user: {user.email}")
+        logger.info(f"Created user: {user.email}")
+    
+    await session.commit()
+    logger.debug(f"Successfully committed {len(created_users)} users to database")
+    return created_users
 
 
 async def create_ai_agents(session: AsyncSession):
@@ -215,6 +283,16 @@ Focus on automation, reliability, and operational excellence. Ensure the platfor
     
     created_agents = []
     for agent_data in agents_data:
+        # Check if agent already exists
+        existing = await session.execute(
+            select(Agent).where(Agent.agent_type == agent_data["agent_type"])
+        )
+        if existing.scalar_one_or_none():
+            if args.verbose:
+                print(f"⚠️  Agent {agent_data['name']} already exists, skipping...")
+            logger.info(f"Agent {agent_data['name']} already exists, skipping...")
+            continue
+            
         agent = Agent(**agent_data)
         session.add(agent)
         created_agents.append(agent)
@@ -231,6 +309,29 @@ async def create_project_templates(session: AsyncSession):
     """Create project templates for common frameworks."""
     
     templates_data = [
+        {
+            "name": "blank",
+            "display_name": "Blank Project",
+            "description": "Start from scratch with no pre-configured template",
+            "category": "static",
+            "subcategory": "blank",
+            "template_type": "blank",
+            "framework": "None",
+            "language": "Python",
+            "difficulty_level": "beginner",
+            "estimated_setup_time": 1,
+            "is_official": True,
+            "is_featured": True,
+            "framework_config": {},
+            "dependencies": {},
+            "build_command": "",
+            "start_command": "",
+            "install_command": "",
+            "test_command": "",
+            "tags": ["blank", "empty", "starter"],
+            "features": ["empty_project", "full_control", "no_boilerplate"],
+            "prerequisites": [],
+        },
         {
             "name": "react-typescript-vite",
             "display_name": "React + TypeScript + Vite",
@@ -395,6 +496,16 @@ async def create_project_templates(session: AsyncSession):
     
     created_templates = []
     for template_data in templates_data:
+        # Check if template already exists
+        existing = await session.execute(
+            select(ProjectTemplate).where(ProjectTemplate.name == template_data["name"])
+        )
+        if existing.scalar_one_or_none():
+            if args.verbose:
+                print(f"⚠️  Template {template_data['name']} already exists, skipping...")
+            logger.info(f"Template {template_data['name']} already exists, skipping...")
+            continue
+            
         template = ProjectTemplate(**template_data)
         session.add(template)
         created_templates.append(template)
@@ -413,13 +524,15 @@ async def main():
         print("🌱 Starting database seeding...")
     logger.info("Starting database seeding process")
     
-    # Create async engine and session
-    logger.debug(f"Creating database engine with URL: {settings.DATABASE_URL}")
-    engine = create_async_engine(settings.DATABASE_URL, echo=args.debug)
-    async_session_factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
-    async with async_session_factory() as session:
+    # Use AsyncSessionLocal instead of creating new engine
+    async with AsyncSessionLocal() as session:
         try:
+            # Create default users
+            if args.verbose:
+                print("\n👤 Creating default users...")
+            logger.info("Creating default users")
+            users = await create_default_users(session)
+            
             # Create AI agents
             if args.verbose:
                 print("\n📋 Creating AI agents...")
@@ -434,9 +547,13 @@ async def main():
             
             if args.verbose or args.debug:
                 print(f"\n✅ Seeding completed successfully!")
+                print(f"   - Created {len(users)} users")
                 print(f"   - Created {len(agents)} AI agents")
                 print(f"   - Created {len(templates)} project templates")
-            logger.info(f"Seeding completed: {len(agents)} agents, {len(templates)} templates")
+                print(f"\n📧 Login credentials:")
+                print(f"   - User: user@zeblit.com / password123")
+                print(f"   - Admin: admin@zeblit.com / admin123")
+            logger.info(f"Seeding completed: {len(users)} users, {len(agents)} agents, {len(templates)} templates")
             
         except Exception as e:
             error_msg = f"Error during seeding: {e}"
@@ -445,9 +562,6 @@ async def main():
             logger.error(error_msg, exc_info=args.debug)
             await session.rollback()
             raise
-        finally:
-            await engine.dispose()
-            logger.debug("Database engine disposed")
 
 
 if __name__ == "__main__":

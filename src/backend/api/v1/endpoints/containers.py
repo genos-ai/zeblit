@@ -16,8 +16,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.backend.core.database import get_db
-from src.backend.api.dependencies import get_current_user
-from src.backend.models import User
+from src.backend.core.dependencies import get_current_user
+from src.backend.models.user import User
 from src.backend.schemas.container import (
     ContainerCreate,
     ContainerRead,
@@ -28,7 +28,7 @@ from src.backend.schemas.container import (
     ContainerCommandResult,
     ContainerHealth
 )
-from src.backend.services.container import container_service
+from src.backend.services.container import ContainerService
 from src.backend.core.exceptions import (
     NotFoundError,
     ValidationError,
@@ -62,7 +62,7 @@ async def create_container(
         Created container
     """
     try:
-        container = await container_service.create_container(
+        container = await ContainerService.create_container(
             db=db,
             project_id=project_id,
             user=current_user,
@@ -103,7 +103,7 @@ async def get_project_container(
         Container if exists, None otherwise
     """
     try:
-        container = await container_service.get_project_container(
+        container = await ContainerService.get_project_container(
             db=db,
             project_id=project_id,
             user=current_user
@@ -127,7 +127,7 @@ async def start_container(
 ):
     """Start a stopped or sleeping container."""
     try:
-        container = await container_service.start_container(
+        container = await ContainerService.start_container(
             db=db,
             container_id=container_id,
             user=current_user
@@ -151,7 +151,7 @@ async def stop_container(
 ):
     """Stop a running container."""
     try:
-        container = await container_service.stop_container(
+        container = await ContainerService.stop_container(
             db=db,
             container_id=container_id,
             user=current_user
@@ -175,7 +175,7 @@ async def restart_container(
 ):
     """Restart a container."""
     try:
-        container = await container_service.restart_container(
+        container = await ContainerService.restart_container(
             db=db,
             container_id=container_id,
             user=current_user
@@ -200,7 +200,7 @@ async def delete_container(
 ):
     """Delete a container."""
     try:
-        success = await container_service.delete_container(
+        success = await ContainerService.delete_container(
             db=db,
             container_id=container_id,
             user=current_user,
@@ -231,7 +231,7 @@ async def get_container_stats(
 ):
     """Get container resource usage statistics."""
     try:
-        stats = await container_service.get_container_stats(
+        stats = await ContainerService.get_container_stats(
             db=db,
             container_id=container_id,
             user=current_user
@@ -256,7 +256,7 @@ async def get_container_logs(
 ):
     """Get container logs."""
     try:
-        logs = await container_service.get_container_logs(
+        logs = await ContainerService.get_container_logs(
             db=db,
             container_id=container_id,
             user=current_user,
@@ -291,7 +291,7 @@ async def execute_command(
         Command execution result
     """
     try:
-        exit_code, output = await container_service.execute_command(
+        exit_code, output = await ContainerService.execute_command(
             db=db,
             container_id=container_id,
             user=current_user,

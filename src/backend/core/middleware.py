@@ -169,88 +169,98 @@ class CORSMiddleware:
             await self.app(scope, receive, send_wrapper)
 
 
-class PerformanceMiddleware(BaseHTTPMiddleware):
-    """Middleware for tracking slow requests and performance metrics."""
+async def performance_middleware(request: Request, call_next):
+    """
+    Middleware to monitor request performance.
     
-    def __init__(self, app, slow_request_threshold: float = 3.0):
+    Logs slow requests and tracks performance metrics.
+    """
+    start_time = time.time()
+    
+    # Add request ID to context
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    
+    # Process request
+    response = await call_next(request)
+    
+    # Calculate duration
+    duration = time.time() - start_time
+    
+    # Log performance data
+    logger.info(
+        "request_completed",
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+        duration=round(duration, 3),
+        request_id=request_id,
+        slow_request=duration > 1.0  # Flag requests taking more than 1 second
+    )
+    
+    # Add performance headers
+    response.headers["X-Response-Time"] = f"{duration:.3f}"
+    response.headers["X-Request-ID"] = request_id
+    
+    return response
+
+
+class ErrorHandlingMiddleware(BaseHTTPMiddleware):
+    """Middleware for handling errors and exceptions."""
+    
+    async def dispatch(self, request: Request, call_next):
+        """Process the request and handle any exceptions."""
+        try:
+            response = await call_next(request)
+            return response
+        except Exception as e:
+            logger.error(
+                "unhandled_exception",
+                error=str(e),
+                error_type=type(e).__name__,
+                path=request.url.path,
+                method=request.method,
+                exc_info=True
+            )
+            
+            # Return a generic error response
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "detail": "Internal server error",
+                    "error_id": request.state.request_id if hasattr(request.state, "request_id") else None
+                }
+            )
+
+
+class PerformanceMiddleware(BaseHTTPMiddleware):
+    """Middleware for monitoring request performance."""
+    
+    def __init__(self, app, slow_request_threshold: float = 1.0):
         super().__init__(app)
         self.slow_request_threshold = slow_request_threshold
     
     async def dispatch(self, request: Request, call_next):
+        """Process the request and monitor performance."""
         start_time = time.time()
         
-        # Track memory usage if available
-        try:
-            import psutil
-            process = psutil.Process()
-            start_memory = process.memory_info().rss / 1024 / 1024  # MB
-        except:
-            start_memory = None
-        
+        # Process the request
         response = await call_next(request)
         
-        duration = time.time() - start_time
+        # Calculate processing time
+        process_time = time.time() - start_time
+        
+        # Add processing time header
+        response.headers["X-Process-Time"] = str(process_time)
         
         # Log slow requests
-        if duration > self.slow_request_threshold:
-            log_data = {
-                "slow_request": True,
-                "duration_seconds": round(duration, 3),
-                "threshold_seconds": self.slow_request_threshold,
-                "method": request.method,
-                "path": request.url.path,
-            }
-            
-            if start_memory:
-                try:
-                    end_memory = process.memory_info().rss / 1024 / 1024
-                    log_data["memory_delta_mb"] = round(end_memory - start_memory, 2)
-                except:
-                    pass
-            
-            logger.warning("Slow request detected", **log_data)
-        
-        # Add performance headers
-        response.headers["X-Response-Time"] = f"{duration:.3f}"
-        
-        return response
-
-
-class ErrorHandlingMiddleware(BaseHTTPMiddleware):
-    """Global error handling middleware."""
-    
-    async def dispatch(self, request: Request, call_next):
-        try:
-            response = await call_next(request)
-            return response
-        except BaseAPIException as e:
-            # Handle known API exceptions
-            return JSONResponse(
-                status_code=e.status_code,
-                content={
-                    "detail": e.detail,
-                    "error_type": e.error_type,
-                    "request_id": getattr(request.state, "request_id", None),
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
-            )
-        except Exception as e:
-            # Handle unexpected errors
-            logger.error(
-                "Unhandled exception in request",
-                error_type=type(e).__name__,
-                error_message=str(e),
+        if process_time > self.slow_request_threshold:
+            logger.warning(
+                "slow_request",
                 path=request.url.path,
                 method=request.method,
-                exc_info=True,
+                process_time=process_time,
+                threshold=self.slow_request_threshold,
+                request_id=getattr(request.state, "request_id", None)
             )
-            
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "detail": "An unexpected error occurred",
-                    "error_type": "InternalServerError",
-                    "request_id": getattr(request.state, "request_id", None),
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
-            ) 
+        
+        return response 

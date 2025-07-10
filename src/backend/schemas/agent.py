@@ -20,9 +20,9 @@ class AgentBase(BaseModel):
     """Base agent schema with common fields."""
     
     name: str = Field(..., description="Agent display name")
-    type: str = Field(..., description="Agent type identifier")
+    agent_type: str = Field(..., description="Agent type identifier")
     description: Optional[str] = Field(None, description="Agent description")
-    model: str = Field(..., description="AI model to use")
+    default_model: str = Field(..., description="AI model to use")
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Model temperature")
     max_tokens: int = Field(4000, gt=0, description="Maximum tokens per response")
     
@@ -33,9 +33,9 @@ class AgentCreate(AgentBase):
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "name": "Development Manager",
-            "type": "development_manager",
+            "agent_type": "development_manager",
             "description": "Manages development tasks and coordinates other agents",
-            "model": "claude-3-sonnet-20240620",
+            "default_model": "claude-3-sonnet-20240620",
             "temperature": 0.7,
             "max_tokens": 4000
         }
@@ -47,7 +47,7 @@ class AgentUpdate(BaseModel):
     
     name: Optional[str] = Field(None, description="Agent display name")
     description: Optional[str] = Field(None, description="Agent description")
-    model: Optional[str] = Field(None, description="AI model to use")
+    default_model: Optional[str] = Field(None, description="AI model to use")
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0, description="Model temperature")
     max_tokens: Optional[int] = Field(None, gt=0, description="Maximum tokens per response")
     is_active: Optional[bool] = Field(None, description="Whether agent is active")
@@ -62,10 +62,10 @@ class AgentResponse(AgentBase):
     updated_at: datetime = Field(..., description="Last update timestamp")
     
     # Performance metrics
-    total_tasks: int = Field(0, description="Total tasks handled")
+    total_tasks_completed: int = Field(0, description="Total tasks handled")
     total_tokens_used: int = Field(0, description="Total tokens consumed")
     total_cost_usd: float = Field(0.0, description="Total cost in USD")
-    average_response_time: float = Field(0.0, description="Average response time in seconds")
+    average_completion_time_minutes: Optional[float] = Field(None, description="Average completion time in minutes")
     
     model_config = ConfigDict(
         from_attributes=True,
@@ -73,18 +73,18 @@ class AgentResponse(AgentBase):
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "name": "Development Manager",
-                "type": "development_manager",
+                "agent_type": "development_manager",
                 "description": "Manages development tasks and coordinates other agents",
-                "model": "claude-3-sonnet-20240620",
+                "default_model": "claude-3-sonnet-20240620",
                 "temperature": 0.7,
                 "max_tokens": 4000,
                 "is_active": True,
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z",
-                "total_tasks": 150,
+                "total_tasks_completed": 150,
                 "total_tokens_used": 250000,
                 "total_cost_usd": 12.50,
-                "average_response_time": 2.5
+                "average_completion_time_minutes": 2.5
             }
         }
     )

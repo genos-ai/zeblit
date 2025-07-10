@@ -1,0 +1,18 @@
+run = "npm run dev"
+entrypoint = "src/main.tsx"
+
+[nix]
+channel = "stable-23_11"
+
+[deployment]
+run = ["sh", "-c", "npm run dev"]
+
+[[ports]]
+localPort = 5173
+externalPort = 80
+
+[env]
+VITE_API_URL = "https://jsonplaceholder.typicode.com"
+VITE_MOCK_MODE = "true"
+VITE_APP_NAME = "AI Development Platform"
+VITE_APP_VERSION = "0.1.0" 

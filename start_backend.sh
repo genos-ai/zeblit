@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Zeblit Backend Startup Script
+# This script ensures the backend starts with proper logging configuration
+
+echo "Starting Zeblit Backend..."
+echo "Logs will be written to:"
+echo "  - Main logs: logs/backend/"
+echo "  - Error logs: logs/errors/"
+echo "  - Daily logs: logs/daily/"
+echo ""
+
+# Ensure we're in the project root
+cd "$(dirname "$0")"
+
+# Create log directories if they don't exist
+mkdir -p logs/backend logs/errors logs/daily logs/archive
+
+# Kill any existing backend processes
+echo "Stopping any existing backend processes..."
+pkill -f "uvicorn src.backend.main:app" 2>/dev/null
+
+# Wait a moment for processes to clean up
+sleep 2
+
+# Use conda environment Python explicitly
+PYTHON_EXEC="/opt/anaconda3/envs/zeblit/bin/python"
+
+# Verify Python path
+echo "Using Python: $PYTHON_EXEC"
+
+# Export environment variables
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+export LOG_LEVEL="${LOG_LEVEL:-INFO}"
+export ENVIRONMENT="${ENVIRONMENT:-development}"
+
+# Convert log level to lowercase using tr (more portable)
+LOG_LEVEL_LOWER=$(echo "$LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
+
+# Start the backend
+echo "Starting backend server..."
+$PYTHON_EXEC -m uvicorn src.backend.main:app \
+    --reload \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --log-level "$LOG_LEVEL_LOWER" \
+    2>&1 | tee -a logs/backend/startup-$(date +%Y-%m-%d).log
+
+# The tee command will:
+# 1. Display output in the terminal
+# 2. Also append to a startup log file 

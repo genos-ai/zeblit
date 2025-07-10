@@ -23,6 +23,7 @@ from src.backend.models import User
 from src.backend.models.enums import UserRole
 from src.backend.repositories import UserRepository, ProjectRepository
 from src.backend.schemas.user import UserCreate, UserStats, UserUpdate
+from src.backend.services.auth import AuthService
 
 logger = logging.getLogger(__name__)
 
@@ -427,8 +428,8 @@ class UserService:
             raise UsernameAlreadyExistsError()
         
         # Hash password
-        from src.backend.services.auth import pwd_context
-        hashed_password = pwd_context.hash(user_create.password)
+        auth_service = AuthService(self.db)
+        hashed_password = auth_service.get_password_hash(user_create.password)
         
         # Create user
         user_data = user_create.model_dump(exclude={"password"})
@@ -507,8 +508,8 @@ class UserService:
         Returns:
             Updated user
         """
-        from src.backend.services.auth import pwd_context
-        hashed_password = pwd_context.hash(new_password)
+        auth_service = AuthService(self.db)
+        hashed_password = auth_service.get_password_hash(new_password)
         
         user = await self.user_repo.update_password(user_id, hashed_password)
         if not user:

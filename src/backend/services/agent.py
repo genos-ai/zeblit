@@ -91,8 +91,8 @@ class AgentService:
         if is_active is not None:
             filters["is_active"] = is_active
         
-        agents = await self.agent_repo.find(
-            criteria=filters,
+        agents = await self.agent_repo.get_many(
+            filters=filters,
             skip=skip,
             limit=limit
         )
@@ -114,8 +114,8 @@ class AgentService:
         agent = await self.get_agent_by_id(agent_id)
         
         # Get current tasks
-        current_tasks = await self.task_repo.find(
-            criteria={
+        current_tasks = await self.task_repo.get_many(
+            filters={
                 "primary_agent": agent.type,
                 "status": TaskStatus.IN_PROGRESS
             },
@@ -123,8 +123,8 @@ class AgentService:
         )
         
         # Get recent completed tasks
-        recent_completed = await self.task_repo.find(
-            criteria={
+        recent_completed = await self.task_repo.get_many(
+            filters={
                 "primary_agent": agent.type,
                 "status": TaskStatus.COMPLETED
             },
@@ -268,6 +268,7 @@ class AgentService:
         # For now, simple selection based on task type
         # In future, could use load balancing, specialization, etc.
         
+        # Map task types to appropriate agents
         agent_type_map = {
             "feature": AgentType.ENGINEER,
             "bug_fix": AgentType.ENGINEER,
@@ -275,11 +276,11 @@ class AgentService:
             "analysis": AgentType.DATA_ANALYST,
             "deployment": AgentType.PLATFORM_ENGINEER,
             "requirements": AgentType.PRODUCT_MANAGER,
-            "coordination": AgentType.DEVELOPMENT_MANAGER
+            "coordination": AgentType.DEV_MANAGER
         }
         
         # Determine primary agent type
-        primary_type = agent_type_map.get(task_type, AgentType.DEVELOPMENT_MANAGER)
+        primary_type = agent_type_map.get(task_type, AgentType.DEV_MANAGER)
         
         # Get the agent
         agent = await self.agent_repo.get_by_type(primary_type.value)

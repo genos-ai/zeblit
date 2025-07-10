@@ -11,8 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.backend.core.database import get_db
-from src.backend.core.auth import get_current_user
-from src.backend.models import User
+from src.backend.core.dependencies import get_current_user
+from src.backend.models.user import User
 from src.backend.services.file import FileService
 from src.backend.schemas.file import (
     FileCreate,

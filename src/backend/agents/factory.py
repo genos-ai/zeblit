@@ -4,7 +4,7 @@ Agent factory for creating agent instances.
 Provides a centralized way to instantiate agents based on their type.
 """
 
-from typing import Optional, Type
+from typing import Optional, Type, Dict
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,9 +27,9 @@ logger = get_logger(__name__)
 class AgentFactory:
     """Factory for creating agent instances."""
     
-    # Registry of agent types to their implementations
-    _agent_classes = {
-        AgentType.DEVELOPMENT_MANAGER: DevManagerAgent,
+    # Agent type to class mapping
+    AGENT_CLASSES: Dict[AgentType, Type[BaseAgent]] = {
+        AgentType.DEV_MANAGER: DevManagerAgent,
         AgentType.PRODUCT_MANAGER: ProductManagerAgent,
         AgentType.DATA_ANALYST: DataAnalystAgent,
         AgentType.ENGINEER: EngineerAgent,
@@ -62,13 +62,13 @@ class AgentFactory:
         """
         agent_type = agent_model.type
         
-        if agent_type not in cls._agent_classes:
+        if agent_type not in cls.AGENT_CLASSES:
             raise ValueError(
                 f"Agent type '{agent_type.value}' not supported. "
-                f"Available types: {', '.join(t.value for t in cls._agent_classes.keys())}"
+                f"Available types: {', '.join(t.value for t in cls.AGENT_CLASSES.keys())}"
             )
         
-        agent_class = cls._agent_classes[agent_type]
+        agent_class = cls.AGENT_CLASSES[agent_type]
         
         logger.info(
             "Creating agent instance",
@@ -98,7 +98,7 @@ class AgentFactory:
             agent_type: Type of agent
             agent_class: Agent class implementation
         """
-        cls._agent_classes[agent_type] = agent_class
+        cls.AGENT_CLASSES[agent_type] = agent_class
         logger.info(
             "Registered agent type",
             agent_type=agent_type.value,
@@ -108,7 +108,7 @@ class AgentFactory:
     @classmethod
     def get_available_types(cls) -> list[AgentType]:
         """Get list of available agent types."""
-        return list(cls._agent_classes.keys())
+        return list(cls.AGENT_CLASSES.keys())
     
     @classmethod
     async def create_agent_by_type(

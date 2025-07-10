@@ -12,16 +12,12 @@ from src.backend.config.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# Create Celery instance
+# Create Celery app
 celery_app = Celery(
     "ai_dev_platform",
-    broker=settings.redis_url,
-    backend=settings.redis_url,
-    include=[
-        "src.backend.tasks.agent_tasks",
-        "src.backend.tasks.orchestration_tasks",
-        "src.backend.tasks.cost_tracking_tasks",
-    ]
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+    include=["src.backend.tasks"]
 )
 
 # Configure Celery
@@ -82,4 +78,4 @@ celery_app.conf.beat_schedule = {
     },
 }
 
-logger.info("Celery app configured", broker=settings.redis_url) 
+logger.info("Celery app configured", broker=settings.REDIS_URL) 

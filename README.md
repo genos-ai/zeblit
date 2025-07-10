@@ -1,193 +1,248 @@
-# AI Development Platform (Zeblit)
+# Zeblit - AI-Powered Development Platform
 
-A browser-based AI development platform that enables users to build applications through natural language interactions with a team of specialized AI agents.
+<p align="center">
+  <img src="docs/images/zeblit-logo.png" alt="Zeblit Logo" width="200">
+</p>
+
+<p align="center">
+  <a href="https://github.com/zeblit/zeblit/actions"><img src="https://github.com/zeblit/zeblit/workflows/CI/CD/badge.svg" alt="CI/CD Status"></a>
+  <a href="https://codecov.io/gh/zeblit/zeblit"><img src="https://codecov.io/gh/zeblit/zeblit/branch/main/graph/badge.svg" alt="Code Coverage"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://zeblit.com/docs"><img src="https://img.shields.io/badge/docs-latest-brightgreen.svg" alt="Documentation"></a>
+</p>
 
 ## 🚀 Overview
 
-This platform provides a complete AI-powered development team in your browser:
-- **6 Specialized AI Agents** working collaboratively
-- **Isolated Development Containers** for each user
-- **Real-time Code Generation** with live preview
-- **Natural Language to Application** workflow
+Zeblit is an AI-powered development platform that enables users to build applications through natural language interactions with a team of specialized AI agents. Each user gets an isolated development container with full IDE capabilities, making coding accessible to everyone.
 
-## 🤖 The AI Agent Team
+### Key Features
 
-1. **Development Manager** - Orchestrates and coordinates all agents
-2. **Product Manager** - Translates requirements into user stories
-3. **Data Analyst** - Designs database schemas and analytics
-4. **Senior Engineer** - Writes core application code
-5. **Architect** - Makes system design decisions
-6. **Platform Engineer** - Handles deployment and infrastructure
+- **🤖 6 Specialized AI Agents**: Work with a team of AI experts (Dev Manager, Product Manager, Data Analyst, Engineer, Architect, Platform Engineer)
+- **💻 Full IDE Experience**: Monaco editor, file explorer, terminal, and live preview
+- **🔄 Real-time Collaboration**: WebSocket-based real-time updates and agent communication
+- **📦 Isolated Containers**: Each project runs in its own secure container
+- **🔌 Git Integration**: Full version control with agent-specific branches
+- **📊 Cost Tracking**: Monitor AI usage and costs in real-time
+- **🔒 Enterprise Security**: JWT authentication, rate limiting, and comprehensive audit logs
 
-## 🛠️ Tech Stack
+## 🏗️ Architecture
 
-### Frontend
-- React 18.3.1 + TypeScript 5.6.3
-- Vite build tool
-- Monaco Editor (VS Code's editor)
-- Tailwind CSS + shadcn/ui
-- TanStack Query for state management
-
-### Backend
-- FastAPI (Python 3.12+)
-- PostgreSQL 16 + SQLAlchemy
-- Redis for real-time features
-- Celery for background tasks
-
-### AI & Container Platform
-- Anthropic Claude (primary LLM)
-- OrbStack for container management
-- Docker → Kubernetes migration path
-
-## 📚 Documentation
-
-All documentation is in the `docs/` folder, numbered in recommended reading order:
-
-1. `1. architecture-summary.md` - Start here for overview
-2. `2. dev-platform-requirements.md` - Detailed requirements
-3. `3. implementation-plan.md` - Step-by-step roadmap
-4. [... and more]
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │     │                 │
+│  React Frontend │────▶│  FastAPI Backend│────▶│  AI Agents      │
+│  (TypeScript)   │     │  (Python 3.12)  │     │  (Claude/GPT-4) │
+│                 │     │                 │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │     │                 │
+│     Nginx       │     │   PostgreSQL    │     │   User          │
+│   (Static/Proxy)│     │   (Database)    │     │   Containers    │
+│                 │     │                 │     │   (Docker)      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
 
 ## 🚦 Getting Started
 
 ### Prerequisites
-- Node.js 20.18.1 LTS
+
+- Docker & Docker Compose
+- Node.js 20+ (or Bun)
 - Python 3.12+
-- uv (Python package manager)
-- PostgreSQL 16
+- PostgreSQL 16+
 - Redis 7+
-- OrbStack (macOS) or Docker
 
-### Installation
+### Quick Start
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/zeblit.git
-cd zeblit
-```
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/zeblit/zeblit.git
+   cd zeblit
+   ```
 
-2. Set up the backend:
-```bash
-# Install uv if not already installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
+2. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-cd src/backend
-uv venv --python 3.12
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install -r ../../requirements.txt
-```
+3. **Start with Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
 
-3. Set up the frontend:
-```bash
-cd frontend
-npm install
-```
+4. **Access the platform**
+   - Frontend: http://localhost
+   - API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
 
-4. Configure environment variables:
-```bash
-# Copy example env files
-cp env.example src/backend/.env
-cp frontend/.env.example frontend/.env
+### Development Setup
 
-# Edit with your API keys and configuration
-```
+1. **Backend Setup**
+   ```bash
+   # Create Python virtual environment
+   conda create -n zeblit python=3.12
+   conda activate zeblit
+   
+   # Install dependencies
+   pip install -r requirements.txt
+   
+   # Run migrations
+   alembic upgrade head
+   
+   # Seed initial data
+   python -m src.backend.seed_data
+   
+   # Start backend
+   python -m uvicorn src.backend.main:app --reload
+   ```
 
-5. Start the development servers:
-```bash
-# Terminal 1: Backend
-cd src/backend
-uvicorn main:app --reload
+2. **Frontend Setup**
+   ```bash
+   # Navigate to frontend
+   cd frontend
+   
+   # Install dependencies (using Bun)
+   bun install
+   
+   # Start development server
+   bun run dev
+   ```
 
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-
-# Terminal 3: Redis
-redis-server
-
-# Terminal 4: PostgreSQL (if not running)
-# Follow PostgreSQL setup for your OS
-```
-
-## 🏗️ Project Structure
+## 📁 Project Structure
 
 ```
 zeblit/
-├── src/
-│   └── backend/      # FastAPI backend services
-├── frontend/         # React frontend application
-├── infrastructure/   # Docker and Kubernetes configs
-├── shared/          # Shared types and contracts
-├── docs/            # Comprehensive documentation
-└── .cursorrules     # AI coding assistant rules
+├── src/backend/          # Python FastAPI backend
+│   ├── api/             # REST API endpoints
+│   ├── agents/          # AI agent implementations
+│   ├── services/        # Business logic
+│   ├── models/          # SQLAlchemy models
+│   ├── repositories/    # Data access layer
+│   └── core/           # Core utilities
+├── frontend/            # React TypeScript frontend
+│   ├── src/
+│   │   ├── components/ # UI components
+│   │   ├── pages/      # Route pages
+│   │   ├── hooks/      # Custom hooks
+│   │   └── lib/        # Utilities
+│   └── e2e/            # Playwright tests
+├── k8s/                # Kubernetes manifests
+├── scripts/            # Utility scripts
+└── docs/              # Documentation
 ```
-
-## 🔐 Security
-
-- JWT-based authentication
-- Container isolation for user code
-- Comprehensive audit logging
-- Input validation and sanitization
-- Rate limiting on API endpoints
-
-## 📊 Development Workflow
-
-1. User describes what they want to build
-2. Development Manager analyzes and delegates tasks
-3. Agents work in parallel on separate Git branches
-4. Real-time updates stream to the UI
-5. Live preview updates as code is generated
-6. Development Manager coordinates final merge
 
 ## 🧪 Testing
 
-We follow Test-Driven Development (TDD) with:
-- Unit tests (75% of tests)
-- Integration tests (20%)
-- End-to-end tests (5%)
-- Target: >80% code coverage
-
-Run tests:
+### Backend Tests
 ```bash
-# Backend tests
-cd src/backend
-pytest
-
-# Frontend tests
-cd frontend
-npm test
+pytest src/backend/tests -v --cov=src/backend
 ```
 
-## 📈 Performance
+### Frontend Tests
+```bash
+cd frontend
+bun test
+```
 
-- Redis for all real-time operations
-- Smart LLM model selection (Sonnet for routine, Opus for complex)
-- Container auto-sleep after 30 minutes
-- Efficient WebSocket communication
-- Database query optimization
+### E2E Tests
+```bash
+cd frontend
+bunx playwright test
+```
+
+### Load Testing
+```bash
+locust -f load_test.py --host http://localhost:8000
+```
 
 ## 🚀 Deployment
 
-The platform follows a progressive deployment strategy:
-1. **Phase 1**: Docker Compose (development)
-2. **Phase 2**: Hybrid Docker/Kubernetes
-3. **Phase 3**: Full Kubernetes
-4. **Production**: Azure Kubernetes Service (AKS)
+### Using Kubernetes
+
+1. **Build and push images**
+   ```bash
+   docker build -f Dockerfile.backend -t zeblit/backend:latest .
+   docker build -f Dockerfile.frontend -t zeblit/frontend:latest .
+   docker push zeblit/backend:latest
+   docker push zeblit/frontend:latest
+   ```
+
+2. **Deploy to Kubernetes**
+   ```bash
+   kubectl apply -k k8s/overlays/production
+   ```
+
+3. **Verify deployment**
+   ```bash
+   kubectl get pods -n production
+   kubectl get svc -n production
+   ```
+
+### Using Docker Compose (Production)
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+## 📊 Monitoring
+
+The platform includes comprehensive monitoring with Prometheus and Grafana:
+
+- **Metrics**: Application metrics, response times, error rates
+- **Logs**: Centralized logging with Loki
+- **Alerts**: Automated alerts for critical issues
+- **Dashboards**: Pre-configured Grafana dashboards
+
+Access monitoring:
+- Grafana: http://localhost:3000
+- Prometheus: http://localhost:9090
+
+## 🔒 Security
+
+- **Authentication**: JWT-based authentication
+- **Authorization**: Role-based access control (RBAC)
+- **Encryption**: TLS/SSL for all communications
+- **Secrets**: Kubernetes secrets management
+- **Audit**: Comprehensive audit logging
+- **Rate Limiting**: API rate limiting per user
+- **Container Isolation**: Secure container sandboxing
+
+## 📚 API Documentation
+
+Interactive API documentation is available at:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
 ## 🤝 Contributing
 
-Please read our contributing guidelines and follow the coding standards in `.cursorrules`.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-## 📄 License
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-[License Type] - See LICENSE file for details
+## 📝 License
 
-## 🔗 Links
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-- [Documentation](./docs)
-- [API Specification](./shared/api-spec.yaml)
-- [Architecture Diagrams](./docs/8.%20tech-architecture-diagram.mermaid)
+## 🙏 Acknowledgments
+
+- Built with ❤️ using FastAPI, React, and TypeScript
+- AI powered by Anthropic Claude and OpenAI
+- Infrastructure powered by Kubernetes and Docker
+
+## 📞 Support
+
+- **Documentation**: [https://zeblit.com/docs](https://zeblit.com/docs)
+- **Issues**: [GitHub Issues](https://github.com/zeblit/zeblit/issues)
+- **Discord**: [Join our community](https://discord.gg/zeblit)
+- **Email**: support@zeblit.com
 
 ---
 
-Built with ❤️ by the Zeblit team 
+<p align="center">Made with ❤️ by the Zeblit Team</p> 

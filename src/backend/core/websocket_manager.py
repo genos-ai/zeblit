@@ -293,6 +293,24 @@ class ConnectionManager:
                         message.payload
                     )
             
+            elif message.type == WebSocketMessageType.PROJECT_SUBSCRIBE:
+                # Handle project subscription
+                await self._handle_project_subscribe(
+                    websocket,
+                    connection_info,
+                    message.payload
+                )
+            
+            elif message.type == WebSocketMessageType.CODE_EXECUTE:
+                # Handle code execution request
+                if connection_info.project_id:
+                    await self._handle_code_execute(
+                        websocket,
+                        connection_info.project_id,
+                        connection_info.user_id,
+                        message.payload
+                    )
+            
             else:
                 logger.warning(f"Unhandled message type: {message.type}")
                 
@@ -365,6 +383,102 @@ class ConnectionManager:
     def get_total_connections(self) -> int:
         """Get total number of active connections."""
         return len(self._connection_info)
+    
+    async def _handle_project_subscribe(
+        self,
+        websocket: WebSocket,
+        connection_info: ConnectionInfo,
+        payload: Dict[str, Any]
+    ) -> None:
+        """Handle project subscription message."""
+        try:
+            project_id = payload.get("project_id")
+            if not project_id:
+                await self.send_to_websocket(
+                    websocket,
+                    WebSocketMessage(
+                        type=WebSocketMessageType.ERROR,
+                        payload={"error": "project_id is required for subscription"}
+                    )
+                )
+                return
+            
+            # Add to project connections if not already there
+            if project_id not in self._project_connections:
+                self._project_connections[project_id] = set()
+            self._project_connections[project_id].add(websocket)
+            
+            # Update connection info
+            connection_info.project_id = project_id
+            
+            # Send confirmation
+            await self.send_to_websocket(
+                websocket,
+                WebSocketMessage(
+                    type=WebSocketMessageType.PROJECT_SUBSCRIBE,
+                    payload={"status": "subscribed", "project_id": project_id}
+                )
+            )
+            
+            logger.info(f"User {connection_info.user_id} subscribed to project {project_id}")
+            
+        except Exception as e:
+            logger.error(f"Error handling project subscription: {e}")
+            await self.send_to_websocket(
+                websocket,
+                WebSocketMessage(
+                    type=WebSocketMessageType.ERROR,
+                    payload={"error": f"Failed to subscribe to project: {str(e)}"}
+                )
+            )
+    
+    async def _handle_code_execute(
+        self,
+        websocket: WebSocket,
+        project_id: str,
+        user_id: str,
+        payload: Dict[str, Any]
+    ) -> None:
+        """Handle code execution request."""
+        try:
+            code = payload.get("code")
+            language = payload.get("language", "python")
+            
+            if not code:
+                await self.send_to_websocket(
+                    websocket,
+                    WebSocketMessage(
+                        type=WebSocketMessageType.ERROR,
+                        payload={"error": "code is required for execution"}
+                    )
+                )
+                return
+            
+            # For now, just acknowledge the request
+            # In a full implementation, this would execute the code in a sandboxed environment
+            await self.send_to_websocket(
+                websocket,
+                WebSocketMessage(
+                    type=WebSocketMessageType.CODE_RESULT,
+                    payload={
+                        "success": True,
+                        "output": f"Code execution request received for {language} code",
+                        "message": "Code execution feature is not yet implemented"
+                    }
+                )
+            )
+            
+            logger.info(f"Code execution request from user {user_id} in project {project_id}")
+            
+        except Exception as e:
+            logger.error(f"Error handling code execution: {e}")
+            await self.send_to_websocket(
+                websocket,
+                WebSocketMessage(
+                    type=WebSocketMessageType.ERROR,
+                    payload={"error": f"Failed to execute code: {str(e)}"}
+                )
+            )
 
 
 # Global connection manager instance

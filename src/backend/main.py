@@ -21,19 +21,10 @@ from src.backend.core.middleware import (
     RequestTrackingMiddleware,
     PerformanceMiddleware,
     ErrorHandlingMiddleware,
-    CORSMiddleware as CustomCORSMiddleware,
-)
-from src.backend.config.logging_config import setup_logging, get_logger
-
-# Initialize logging first before any other imports use it
-setup_logging(
-    app_name="ai_dev_platform",
-    log_level=settings.log_level,
-    environment=settings.environment
 )
 
-# Get logger after setup
-logger = get_logger(__name__)
+# Get logger
+logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
@@ -42,7 +33,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info(
         "Starting AI Development Platform",
-        version=settings.version,
+        version=settings.VERSION,
         environment=settings.environment,
         debug=settings.debug,
     )
@@ -66,8 +57,8 @@ async def lifespan(app: FastAPI):
 def create_application() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
-        title=settings.project_name,
-        version=settings.version,
+        title=settings.PROJECT_NAME,
+        version=settings.VERSION,
         docs_url="/api/docs" if settings.debug else None,
         redoc_url="/api/redoc" if settings.debug else None,
         openapi_url="/api/openapi.json" if settings.debug else None,
@@ -81,7 +72,7 @@ def create_application() -> FastAPI:
     
     # Configure CORS
     app.add_middleware(
-        CustomCORSMiddleware,
+        CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
@@ -89,7 +80,7 @@ def create_application() -> FastAPI:
     )
     
     # Include API routes
-    app.include_router(api_router, prefix=settings.api_v1_str)
+    app.include_router(api_router, prefix=settings.API_V1_STR)
     
     # Mount static files if in development
     if settings.debug:
@@ -100,7 +91,6 @@ def create_application() -> FastAPI:
     logger.info(
         "FastAPI application created",
         routes_count=len(app.routes),
-        middleware_count=len(app.middleware),
     )
     
     return app
@@ -115,8 +105,8 @@ async def root():
     """Root endpoint - redirects to API documentation."""
     return {
         "message": "Welcome to the AI Development Platform API",
-        "documentation": f"{settings.api_v1_str}/docs",
-        "version": settings.version,
+        "documentation": f"{settings.API_V1_STR}/docs",
+        "version": settings.VERSION,
     }
 
 
@@ -125,7 +115,7 @@ async def health_check():
     """Basic health check endpoint."""
     return {
         "status": "healthy",
-        "version": settings.version,
+        "version": settings.VERSION,
         "environment": settings.environment,
     }
 

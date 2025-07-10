@@ -21,7 +21,7 @@ from sqlalchemy.orm import selectinload
 from src.backend.models import Container, Project, User
 from src.backend.models.enums import ContainerStatus
 from src.backend.repositories.container import ContainerRepository
-from src.backend.core.orbstack_client import orbstack_client
+from src.backend.integrations.orbstack import orbstack_client
 from src.backend.core.config import settings
 from src.backend.core.exceptions import (
     ValidationError,
@@ -29,7 +29,7 @@ from src.backend.core.exceptions import (
     ForbiddenError,
     ServiceError
 )
-from src.backend.core.cache import cache_manager
+from src.backend.core.cache import project_cache
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +173,7 @@ class ContainerService:
             await db.commit()
             
             # Clear project cache
-            await cache_manager.project.delete(str(project_id))
+            await project_cache.delete(str(project_id))
             
             logger.info(f"Created container {container.id} for project {project_id}")
             return container
@@ -491,7 +491,7 @@ class ContainerService:
     
     async def _clear_container_cache(self, container: Container) -> None:
         """Clear container-related cache."""
-        await cache_manager.project.delete(str(container.project_id))
+        await project_cache.delete(str(container.project_id))
     
     async def _cleanup_loop(self) -> None:
         """Background task to cleanup old containers."""

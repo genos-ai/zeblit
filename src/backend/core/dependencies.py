@@ -13,8 +13,8 @@ including database sessions, authentication, and pagination.
 """
 
 from typing import AsyncGenerator, Optional
-from fastapi import Depends, Query, Request, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, Query, Request, HTTPException, status, Header
+from fastapi.security import OAuth2PasswordBearer, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError, jwt
 
@@ -28,6 +28,8 @@ from src.backend.schemas.auth import TokenData
 
 # OAuth2 scheme for token authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# Optional bearer scheme for optional authentication
+optional_oauth2_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -100,26 +102,26 @@ class FilterParams:
 
 
 async def get_current_user_optional(
-    token: Optional[str] = Depends(oauth2_scheme),
+    credentials = Depends(optional_oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ) -> Optional[User]:
     """
     Get current user if authenticated, otherwise None.
     
     Args:
-        token: JWT token from request
+        credentials: Bearer token credentials from request
         db: Database session
         
     Returns:
         Optional[User]: User if authenticated, None otherwise
     """
-    if not token:
+    if not credentials:
         return None
         
     try:
         # Decode JWT token
         payload = jwt.decode(
-            token,
+            credentials.credentials,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM]
         )

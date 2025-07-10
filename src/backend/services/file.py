@@ -31,7 +31,7 @@ from src.backend.core.config import settings
 from src.backend.models import ProjectFile, Project, User, Container
 from src.backend.models.enums import FileType, ContainerStatus
 from src.backend.repositories import ProjectFileRepository, ProjectRepository
-from src.backend.services.container import container_service
+from src.backend.services.container import ContainerService
 from src.backend.integrations.orbstack import orbstack_client
 
 logger = logging.getLogger(__name__)

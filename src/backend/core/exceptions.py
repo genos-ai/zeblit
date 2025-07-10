@@ -46,6 +46,17 @@ class AuthorizationError(BaseAPIException):
         )
 
 
+class ForbiddenError(BaseAPIException):
+    """Raised when an action is forbidden."""
+    
+    def __init__(self, detail: str = "Action forbidden"):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+            error_type="ForbiddenError"
+        )
+
+
 class NotFoundError(BaseAPIException):
     """Raised when a requested resource is not found."""
     

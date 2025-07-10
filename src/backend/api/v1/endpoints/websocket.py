@@ -24,7 +24,6 @@ from src.backend.schemas.websocket import WebSocketMessage, WebSocketMessageType
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/ws",
     tags=["websocket"],
 )
 

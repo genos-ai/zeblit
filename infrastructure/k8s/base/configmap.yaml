@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zeblit-config
+  labels:
+    app: zeblit
+data:
+  environment: "production"
+  redis-url: "redis://redis:6379"
+  api-url: "https://api.zeblit.com"
+  ws-url: "wss://api.zeblit.com/ws"
+  app-name: "Zeblit"
+  app-version: "1.0.0"
+  log-level: "INFO"
+  workers: "4"
+  max-upload-size: "50"
+  container-memory-limit: "4096"
+  container-cpu-limit: "2"
+  container-timeout: "1800" 
