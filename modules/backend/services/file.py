@@ -32,7 +32,7 @@ from modules.backend.models import ProjectFile, Project, User, Container
 from modules.backend.models.enums import FileType, ContainerStatus
 from modules.backend.repositories import ProjectFileRepository, ProjectRepository
 from modules.backend.services.container import ContainerService
-from modules.backend.integrations.orbstack import orbstack_client
+from modules.backend.core.orbstack_client import orbstack_client
 
 logger = logging.getLogger(__name__)
 
@@ -874,6 +874,201 @@ class FileService:
             )
         except Exception as e:
             logger.error(f"Failed to move file in container: {e}")
+    
+    async def upload_file(
+        self,
+        project_id: UUID,
+        file_path: str,
+        content: bytes,
+        user: User,
+        content_type: Optional[str] = None
+    ) -> ProjectFile:
+        """
+        Upload a file (binary or text) to the project.
+        
+        Args:
+            project_id: Project ID
+            file_path: Relative file path
+            content: File content as bytes
+            user: User uploading the file
+            content_type: Optional MIME type
+            
+        Returns:
+            Created or updated file
+        """
+        # Verify project access
+        project = await self._verify_project_access(project_id, user.id, write=True)
+        
+        # Validate file path
+        self._validate_file_path(file_path)
+        
+        # Check file size
+        if len(content) > self.MAX_FILE_SIZE:
+            raise ValidationError(f"File too large. Maximum size: {self.MAX_FILE_SIZE} bytes")
+        
+        # Determine if file is binary
+        try:
+            text_content = content.decode('utf-8')
+            is_binary = False
+        except UnicodeDecodeError:
+            text_content = None
+            is_binary = True
+        
+        # Get or detect content type
+        if not content_type:
+            content_type = self.mime.from_buffer(content)
+        
+        # Check if file exists
+        existing_file = await self._get_file_by_path(project_id, file_path)
+        
+        if existing_file:
+            # Update existing file
+            existing_file.content = text_content
+            existing_file.size_bytes = len(content)
+            existing_file.file_hash = hashlib.sha256(content).hexdigest()
+            existing_file.is_binary = is_binary
+            existing_file.mime_type = content_type
+            existing_file.updated_at = datetime.utcnow()
+            existing_file.updated_by_id = user.id
+            
+            await self.db.commit()
+            file = existing_file
+        else:
+            # Create new file
+            file = ProjectFile(
+                project_id=project_id,
+                file_path=file_path,
+                absolute_path=f"/workspace/{file_path}",
+                content=text_content,
+                size_bytes=len(content),
+                file_hash=hashlib.sha256(content).hexdigest(),
+                file_type=FileType.from_path(file_path),
+                is_binary=is_binary,
+                mime_type=content_type,
+                encoding='utf-8' if not is_binary else None,
+                created_by_id=user.id,
+                updated_by_id=user.id
+            )
+            
+            self.db.add(file)
+            await self.db.commit()
+            await self.db.refresh(file)
+        
+        # Upload to container if available
+        container = await self._get_project_container(project_id)
+        if container and container.status == ContainerStatus.RUNNING:
+            try:
+                await orbstack_client.upload_file(
+                    container.container_id,
+                    f"/workspace/{file_path}",
+                    content,
+                    create_dirs=True
+                )
+            except Exception as e:
+                logger.error(f"Failed to upload file to container: {e}")
+        
+        # Clear caches
+        await self._clear_project_cache(project_id)
+        
+        return file
+    
+    async def download_file(
+        self,
+        project_id: UUID,
+        file_path: str,
+        user: User
+    ) -> Tuple[bytes, str]:
+        """
+        Download a file from the project.
+        
+        Args:
+            project_id: Project ID
+            file_path: Relative file path
+            user: User downloading the file
+            
+        Returns:
+            Tuple of (file_content, content_type)
+        """
+        # Verify project access
+        await self._verify_project_access(project_id, user.id, write=False)
+        
+        # Try to get file from container first (most up-to-date)
+        container = await self._get_project_container(project_id)
+        if container and container.status == ContainerStatus.RUNNING:
+            try:
+                content = await orbstack_client.download_file(
+                    container.container_id,
+                    f"/workspace/{file_path}"
+                )
+                if content is not None:
+                    # Detect content type
+                    content_type = self.mime.from_buffer(content)
+                    return content, content_type
+            except Exception as e:
+                logger.error(f"Failed to download from container: {e}")
+        
+        # Fallback to database
+        file = await self._get_file_by_path(project_id, file_path)
+        if not file:
+            raise NotFoundError(f"File not found: {file_path}")
+        
+        if file.is_binary:
+            raise ValidationError("Binary files cannot be downloaded from database")
+        
+        content = file.content.encode('utf-8') if file.content else b''
+        content_type = file.mime_type or 'text/plain'
+        
+        return content, content_type
+    
+    async def get_workspace_files(
+        self,
+        project_id: UUID,
+        user: User
+    ) -> Dict[str, Any]:
+        """
+        Get complete file tree from container workspace.
+        
+        Args:
+            project_id: Project ID
+            user: User requesting files
+            
+        Returns:
+            File tree structure
+        """
+        # Verify project access
+        await self._verify_project_access(project_id, user.id, write=False)
+        
+        container = await self._get_project_container(project_id)
+        if not container or container.status != ContainerStatus.RUNNING:
+            # Return database files if no container
+            db_files = await self.list_files(project_id, user)
+            return {
+                "source": "database",
+                "files": [
+                    {
+                        "path": f.file_path,
+                        "size": f.size_bytes,
+                        "type": f.file_type.value,
+                        "modified": f.updated_at.isoformat()
+                    }
+                    for f in db_files
+                ]
+            }
+        
+        try:
+            # Get workspace file tree from container
+            file_tree = await orbstack_client.get_workspace_files(container.container_id)
+            
+            return {
+                "source": "container",
+                "container_id": container.container_id,
+                "files": file_tree,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get workspace files: {e}")
+            raise ServiceError(f"Failed to retrieve workspace files: {e}")
     
     async def _clear_project_cache(self, project_id: UUID) -> None:
         """Clear project-related caches."""

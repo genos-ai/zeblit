@@ -341,4 +341,110 @@ async def download_file(
             }
         )
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e)) 
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# New backend-first file operations
+
+@router.post("/upload")
+async def upload_file(
+    project_id: UUID,
+    file_path: str = Body(..., description="File path relative to project root"),
+    content: bytes = Body(..., description="File content as bytes"),
+    content_type: Optional[str] = Body(None, description="Optional MIME type"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload a file (binary or text) to the project.
+    
+    This endpoint accepts raw file content and handles both binary and text files.
+    Files are stored in the database and synced to containers automatically.
+    """
+    file_service = FileService(db)
+    
+    try:
+        file = await file_service.upload_file(
+            project_id=project_id,
+            file_path=file_path,
+            content=content,
+            user=current_user,
+            content_type=content_type
+        )
+        
+        return {
+            "success": True,
+            "file_id": str(file.id),
+            "file_path": file.file_path,
+            "size_bytes": file.size_bytes,
+            "is_binary": file.is_binary,
+            "mime_type": file.mime_type,
+            "uploaded_at": file.updated_at.isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{file_path:path}/download/raw")
+async def download_file_raw(
+    project_id: UUID,
+    file_path: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Response:
+    """
+    Download raw file content (binary or text).
+    
+    This endpoint returns the actual file content with proper headers,
+    fetching from container if available or database as fallback.
+    """
+    file_service = FileService(db)
+    
+    try:
+        content, content_type = await file_service.download_file(
+            project_id=project_id,
+            file_path=file_path,
+            user=current_user
+        )
+        
+        # Get filename from path
+        filename = file_path.split('/')[-1]
+        
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(content))
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/workspace")
+async def get_workspace_files(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get complete file tree from container workspace.
+    
+    Returns the current state of files in the container workspace,
+    which may be more up-to-date than database records.
+    """
+    file_service = FileService(db)
+    
+    try:
+        workspace_data = await file_service.get_workspace_files(
+            project_id=project_id,
+            user=current_user
+        )
+        
+        return workspace_data
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) 
