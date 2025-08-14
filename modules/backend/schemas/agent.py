@@ -163,4 +163,49 @@ class AgentMetrics(BaseModel):
             "success_rate": 0.968,
             "average_response_time": 2.5
         }
+    })
+
+
+# New schemas for agent orchestrator
+
+class AgentChatRequest(BaseModel):
+    """Schema for agent chat requests."""
+    
+    message: str = Field(..., description="Message to send to agent")
+    target_agent: Optional[str] = Field(None, description="Optional specific agent type to target")
+    context: Optional[Dict[str, Any]] = Field(None, description="Additional context for the agent")
+    
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "message": "Create a new API endpoint for user management",
+            "target_agent": "engineer",
+            "context": {
+                "priority": "high",
+                "deadline": "2024-01-15"
+            }
+        }
+    })
+
+
+class AgentChatResponse(BaseModel):
+    """Schema for agent chat responses."""
+    
+    agent_id: str = Field(..., description="ID of the responding agent")
+    agent_type: str = Field(..., description="Type of the responding agent")
+    response: str = Field(..., description="Agent's response message")
+    timestamp: str = Field(..., description="Response timestamp")
+    routing: Optional[Dict[str, Any]] = Field(None, description="Routing information if message should be forwarded")
+    
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "agent_id": "123e4567-e89b-12d3-a456-426614174000",
+            "agent_type": "dev_manager",
+            "response": "I'll help you create that API endpoint. Let me route this to our Engineer agent who can implement the specific code.",
+            "timestamp": "2024-01-11T10:30:00Z",
+            "routing": {
+                "suggested_agent": "engineer",
+                "reason": "Message contains keywords related to engineer",
+                "keywords_found": ["implement", "API endpoint"]
+            }
+        }
     }) 

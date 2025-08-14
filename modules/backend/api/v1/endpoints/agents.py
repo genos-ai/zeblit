@@ -17,10 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from modules.backend.core.dependencies import get_db, get_current_user
 from modules.backend.models.user import User
 from modules.backend.services.agent import AgentService
+from modules.backend.services.agent_orchestrator import agent_orchestrator
 from modules.backend.schemas.agent import (
     AgentResponse,
     AgentListResponse,
     AgentStatusUpdate,
+    AgentChatRequest,
+    AgentChatResponse,
 )
 from modules.backend.core.exceptions import NotFoundError
 
@@ -245,4 +248,167 @@ async def get_agent_metrics(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Agent not found"
-        ) 
+        )
+
+
+# New Agent Orchestrator Endpoints
+
+@router.post("/projects/{project_id}/chat", response_model=AgentChatResponse)
+async def chat_with_agent(
+    project_id: UUID,
+    chat_request: AgentChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AgentChatResponse:
+    """
+    Chat with project agents - primary interface for user interactions.
+    
+    Args:
+        project_id: Project ID
+        chat_request: Chat message and optional target agent
+        db: Database session
+        current_user: Current authenticated user
+        
+    Returns:
+        Agent response with routing information
+    """
+    try:
+        response = await agent_orchestrator.process_user_message(
+            db=db,
+            user_id=current_user.id,
+            project_id=project_id,
+            message=chat_request.message,
+            target_agent=chat_request.target_agent
+        )
+        
+        return AgentChatResponse(**response)
+        
+    except NotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or access denied"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process chat message: {str(e)}"
+        )
+
+
+@router.get("/projects/{project_id}/chat/history")
+async def get_chat_history(
+    project_id: UUID,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get chat history for a project."""
+    # TODO: Implement conversation history retrieval
+    return {"message": "Chat history endpoint - to be implemented"}
+
+
+@router.post("/projects/{project_id}/agents/{agent_type}/direct")
+async def direct_agent_message(
+    project_id: UUID,
+    agent_type: str,
+    chat_request: AgentChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Send a message directly to a specific agent type.
+    
+    Args:
+        project_id: Project ID
+        agent_type: Target agent type (e.g., 'engineer', 'architect')
+        chat_request: Message content
+        db: Database session
+        current_user: Current authenticated user
+    """
+    try:
+        from modules.backend.models.agent import AgentType
+        
+        # Convert string to AgentType enum
+        try:
+            target_agent = AgentType(agent_type.upper())
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid agent type: {agent_type}"
+            )
+        
+        response = await agent_orchestrator.route_to_agent(
+            db=db,
+            project_id=project_id,
+            agent_type=target_agent,
+            message=chat_request.message,
+            context=chat_request.context
+        )
+        
+        return response
+        
+    except NotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or access denied"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send direct message: {str(e)}"
+        )
+
+
+@router.get("/projects/{project_id}/status")
+async def get_project_agents_status(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get status of all agents for a project.
+    
+    Args:
+        project_id: Project ID
+        db: Database session
+        current_user: Current authenticated user
+        
+    Returns:
+        List of agent statuses
+    """
+    try:
+        statuses = await agent_orchestrator.get_agents_status(
+            db=db,
+            project_id=project_id
+        )
+        
+        return {"agents": statuses}
+        
+    except NotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found or access denied"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get agents status: {str(e)}"
+        )
+
+
+@router.get("/status")
+async def get_all_agents_status():
+    """
+    Get global status of the agent system.
+    
+    Returns:
+        Overall agent system status and statistics
+    """
+    from datetime import datetime
+    
+    return {
+        "system_status": "operational",
+        "active_agents": len(agent_orchestrator._active_agents),
+        "timestamp": datetime.utcnow().isoformat()
+    } 
