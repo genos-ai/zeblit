@@ -1,10 +1,11 @@
 """
 Console service for capturing and managing console logs/errors.
 
-*Version: 1.0.0*
+*Version: 1.1.0*
 *Author: AI Development Platform Team*
 
 ## Changelog
+- 1.1.0 (2025-01-11): Added real-time streaming and AI error analysis capabilities.
 - 1.0.0 (2024-12-17): Initial console service implementation.
 """
 
@@ -347,6 +348,151 @@ class ConsoleService:
                 "error_count": 0,
                 "has_errors": False
             }
+    
+    async def stream_container_output(
+        self,
+        project_id: UUID,
+        container_id: str,
+        follow: bool = True
+    ):
+        """
+        Stream container output in real-time.
+        
+        This method connects to container output streams and publishes
+        the output to the message bus for WebSocket distribution.
+        
+        Args:
+            project_id: Project ID
+            container_id: Container ID to stream from
+            follow: Whether to follow the stream (vs just get recent)
+        """
+        try:
+            from modules.backend.core.orbstack_client import orbstack_client
+            
+            # Stream container logs
+            async for log_line in orbstack_client.stream_logs(container_id, follow=follow):
+                # Parse log line and create console entry
+                log_entry = {
+                    "id": str(uuid4()),
+                    "project_id": str(project_id),
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "level": "info",
+                    "message": log_line,
+                    "source": "container",
+                    "container_id": container_id
+                }
+                
+                # Store in Redis
+                key = f"console:{project_id}"
+                await redis_client.lpush(key, log_entry)
+                await redis_client.ltrim(key, 0, self.max_logs_per_project - 1)
+                await redis_client.expire(key, self.console_ttl)
+                
+                # Publish to message bus for real-time distribution
+                await message_bus.publish(
+                    f"console:{project_id}",
+                    Message(
+                        type=MessageType.CONSOLE_LOG,
+                        sender="console_service",
+                        payload=log_entry,
+                        project_id=project_id
+                    )
+                )
+                
+        except Exception as e:
+            logger.error(f"Failed to stream container output: {e}")
+    
+    async def analyze_errors_for_ai(
+        self,
+        project_id: UUID
+    ) -> Dict[str, Any]:
+        """
+        Analyze recent errors to provide insights for AI agents.
+        
+        Args:
+            project_id: Project ID
+            
+        Returns:
+            Error analysis for AI processing
+        """
+        try:
+            errors = await self.get_recent_errors(project_id, count=20)
+            
+            if not errors:
+                return {"has_errors": False, "analysis": "No recent errors found."}
+            
+            # Group errors by type and message
+            error_patterns = {}
+            for error in errors:
+                key = f"{error.get('type', 'Unknown')}:{error.get('message', '')[:100]}"
+                if key not in error_patterns:
+                    error_patterns[key] = {
+                        "count": 0,
+                        "first_seen": error.get("timestamp"),
+                        "last_seen": error.get("timestamp"),
+                        "example": error
+                    }
+                error_patterns[key]["count"] += 1
+                error_patterns[key]["last_seen"] = error.get("timestamp")
+            
+            # Sort by frequency
+            sorted_patterns = sorted(
+                error_patterns.items(),
+                key=lambda x: x[1]["count"],
+                reverse=True
+            )
+            
+            # Generate analysis
+            analysis = {
+                "has_errors": True,
+                "total_errors": len(errors),
+                "unique_patterns": len(error_patterns),
+                "most_frequent_error": sorted_patterns[0][1]["example"] if sorted_patterns else None,
+                "error_patterns": [
+                    {
+                        "pattern": pattern[0],
+                        "count": pattern[1]["count"],
+                        "first_seen": pattern[1]["first_seen"],
+                        "last_seen": pattern[1]["last_seen"],
+                        "example": pattern[1]["example"]
+                    }
+                    for pattern in sorted_patterns[:5]  # Top 5 patterns
+                ],
+                "recommendations": self._generate_error_recommendations(sorted_patterns)
+            }
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Failed to analyze errors for AI: {e}")
+            return {"has_errors": False, "error": str(e)}
+    
+    def _generate_error_recommendations(self, error_patterns: List) -> List[str]:
+        """Generate recommendations based on error patterns."""
+        recommendations = []
+        
+        if not error_patterns:
+            return recommendations
+        
+        # Analyze common error types
+        for pattern, data in error_patterns[:3]:  # Top 3 patterns
+            error_type = data["example"].get("type", "")
+            message = data["example"].get("message", "")
+            
+            if "TypeError" in error_type:
+                recommendations.append("Check variable types and ensure proper type conversion")
+            elif "ReferenceError" in error_type:
+                recommendations.append("Verify variable declarations and scope")
+            elif "SyntaxError" in error_type:
+                recommendations.append("Review code syntax for missing brackets, quotes, or semicolons")
+            elif "NetworkError" in error_type or "fetch" in message.lower():
+                recommendations.append("Check network connectivity and API endpoints")
+            elif "permission" in message.lower():
+                recommendations.append("Verify file/directory permissions")
+            elif data["count"] > 5:
+                recommendations.append(f"Recurring error pattern detected - consider adding error handling")
+        
+        return recommendations
     
     async def _update_console_stats(
         self,

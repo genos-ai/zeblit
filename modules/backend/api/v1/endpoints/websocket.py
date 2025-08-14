@@ -11,6 +11,7 @@ WebSocket endpoints for real-time communication.
 import logging
 from typing import Optional
 from uuid import UUID
+from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, status
 from fastapi.responses import HTMLResponse
@@ -120,6 +121,114 @@ async def websocket_endpoint(
     finally:
         # Ensure cleanup
         await connection_manager.disconnect(websocket)
+
+
+@router.websocket("/projects/{project_id}/console")
+async def console_websocket(
+    websocket: WebSocket,
+    project_id: UUID,
+    token: str = Query(..., description="JWT authentication token")
+):
+    """
+    WebSocket endpoint for real-time console streaming.
+    
+    This endpoint provides live console output from containers and allows
+    clients to send console commands.
+    
+    Query Parameters:
+        token: JWT authentication token
+        
+    Message Types:
+        - Receive: console_output, container_logs, error_logs
+        - Send: execute_command, clear_logs
+    """
+    try:
+        # Authenticate user
+        user_info = await get_current_user_from_token(token)
+        user_id = UUID(user_info["user_id"])
+        
+        # TODO: Verify project access
+        
+        # Accept WebSocket connection
+        await websocket.accept()
+        
+        # Register for project-specific console updates
+        connection_key = f"console:{project_id}:{user_id}"
+        await connection_manager.connect(websocket, user_id, project_id)
+        
+        try:
+            # Send initial console state
+            from modules.backend.services.console import console_service
+            
+            # Get recent logs
+            recent_logs = await console_service.get_recent_logs(project_id, count=50)
+            await websocket.send_json({
+                "type": "console_history",
+                "payload": {"logs": recent_logs}
+            })
+            
+            # Get recent errors
+            recent_errors = await console_service.get_recent_errors(project_id, count=10)
+            await websocket.send_json({
+                "type": "error_history", 
+                "payload": {"errors": recent_errors}
+            })
+            
+            # Message handling loop
+            while True:
+                data = await websocket.receive_json()
+                message_type = data.get("type")
+                payload = data.get("payload", {})
+                
+                if message_type == "execute_command":
+                    # Execute command in container
+                    from modules.backend.services.container import ContainerService
+                    result = await ContainerService().execute_project_command(
+                        db=None,  # TODO: Get DB session
+                        project_id=project_id,
+                        user_id=user_id,
+                        command=payload.get("command", []),
+                        workdir=payload.get("workdir")
+                    )
+                    
+                    await websocket.send_json({
+                        "type": "command_result",
+                        "payload": result
+                    })
+                
+                elif message_type == "clear_logs":
+                    # Clear console logs
+                    success = await console_service.clear_logs(project_id)
+                    await websocket.send_json({
+                        "type": "logs_cleared",
+                        "payload": {"success": success}
+                    })
+                
+                elif message_type == "ping":
+                    await websocket.send_json({
+                        "type": "pong",
+                        "payload": {"timestamp": datetime.utcnow().isoformat()}
+                    })
+                
+        except WebSocketDisconnect:
+            logger.info(f"Console WebSocket disconnected for user {user_id}, project {project_id}")
+        except Exception as e:
+            logger.error(f"Console WebSocket error: {e}")
+            await websocket.send_json({
+                "type": "error",
+                "payload": {"error": str(e)}
+            })
+    
+    except AuthenticationError as e:
+        logger.warning(f"Console WebSocket authentication failed: {e}")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason=str(e))
+    except Exception as e:
+        logger.error(f"Console WebSocket connection error: {e}")
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason="Internal server error")
+    finally:
+        # Cleanup
+        if websocket in connection_manager._connection_info:
+            await connection_manager.disconnect(websocket)
 
 
 @router.get("/test", response_class=HTMLResponse)
