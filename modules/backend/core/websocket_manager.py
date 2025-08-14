@@ -1,18 +1,21 @@
 """
 WebSocket manager for real-time communication.
 
-*Version: 1.0.0*
+*Version: 1.1.0*
 *Author: AI Development Platform Team*
 
 ## Changelog
+- 1.1.0 (2025-01-11): Enhanced with API key support and rate limiting.
 - 1.0.0 (2024-12-17): Initial WebSocket manager implementation.
 """
 
 import json
 import logging
+import asyncio
 from typing import Dict, Set, List, Optional, Any
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timedelta
+from collections import defaultdict
 
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
@@ -39,6 +42,18 @@ class ConnectionManager:
         self._project_connections: Dict[str, Set[WebSocket]] = {}
         # Connection metadata
         self._connection_info: Dict[WebSocket, ConnectionInfo] = {}
+        
+        # Rate limiting: user_id -> list of message timestamps
+        self._rate_limit_tracking: Dict[str, List[datetime]] = defaultdict(list)
+        
+        # Connection statistics
+        self._stats = {
+            "total_connections": 0,
+            "active_connections": 0,
+            "messages_sent": 0,
+            "messages_received": 0,
+            "rate_limit_violations": 0
+        }
     
     async def connect(
         self,
@@ -479,6 +494,96 @@ class ConnectionManager:
                     payload={"error": f"Failed to execute code: {str(e)}"}
                 )
             )
+    
+    def is_rate_limited(self, user_id: str, max_messages: int = 60, window_minutes: int = 1) -> bool:
+        """
+        Check if a user is rate limited.
+        
+        Args:
+            user_id: User ID to check
+            max_messages: Maximum messages allowed in the time window
+            window_minutes: Time window in minutes
+            
+        Returns:
+            True if rate limited, False otherwise
+        """
+        now = datetime.utcnow()
+        cutoff = now - timedelta(minutes=window_minutes)
+        
+        # Clean old timestamps
+        self._rate_limit_tracking[user_id] = [
+            ts for ts in self._rate_limit_tracking[user_id] 
+            if ts > cutoff
+        ]
+        
+        # Check if limit exceeded
+        if len(self._rate_limit_tracking[user_id]) >= max_messages:
+            self._stats["rate_limit_violations"] += 1
+            return True
+        
+        # Add current timestamp
+        self._rate_limit_tracking[user_id].append(now)
+        return False
+    
+    def get_connection_stats(self) -> Dict[str, Any]:
+        """Get WebSocket connection statistics."""
+        active_connections = sum(len(conns) for conns in self._user_connections.values())
+        
+        return {
+            **self._stats,
+            "active_connections": active_connections,
+            "users_connected": len(self._user_connections),
+            "projects_connected": len(self._project_connections),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    async def broadcast_to_all(self, message: WebSocketMessage) -> int:
+        """
+        Broadcast a message to all connected users.
+        
+        Args:
+            message: Message to broadcast
+            
+        Returns:
+            Number of connections the message was sent to
+        """
+        sent_count = 0
+        
+        for websockets in self._user_connections.values():
+            for websocket in websockets.copy():
+                try:
+                    await self.send_to_websocket(websocket, message)
+                    sent_count += 1
+                except:
+                    # Remove failed connection
+                    await self.disconnect(websocket)
+        
+        return sent_count
+    
+    async def cleanup_stale_connections(self) -> int:
+        """
+        Clean up stale WebSocket connections.
+        
+        Returns:
+            Number of connections cleaned up
+        """
+        cleaned_count = 0
+        
+        # Check all connections for stale state
+        for websocket in list(self._connection_info.keys()):
+            if websocket.client_state == WebSocketState.DISCONNECTED:
+                await self.disconnect(websocket)
+                cleaned_count += 1
+        
+        return cleaned_count
+    
+    def get_user_connection_count(self, user_id: str) -> int:
+        """Get number of active connections for a user."""
+        return len(self._user_connections.get(user_id, set()))
+    
+    def get_project_connection_count(self, project_id: str) -> int:
+        """Get number of active connections for a project."""
+        return len(self._project_connections.get(project_id, set()))
 
 
 # Global connection manager instance
