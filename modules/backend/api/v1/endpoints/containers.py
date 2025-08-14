@@ -344,4 +344,131 @@ async def check_container_health(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to check container health"
+        )
+
+
+# New API endpoints for backend-first implementation
+
+@router.post("/projects/{project_id}/container/start")
+async def start_project_container(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Start or create container for a project."""
+    try:
+        container = await ContainerService.start_project_container(
+            db=db,
+            project_id=project_id,
+            user=current_user
+        )
+        return {"container_id": str(container.id), "status": container.status}
+    except (NotFoundError, ValidationError, ForbiddenError) as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to start project container: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start container"
+        )
+
+
+@router.post("/projects/{project_id}/container/stop")
+async def stop_project_container(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Stop container for a project."""
+    try:
+        success = await ContainerService.stop_project_container(
+            db=db,
+            project_id=project_id,
+            user=current_user
+        )
+        return {"success": success}
+    except (NotFoundError, ForbiddenError) as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to stop project container: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to stop container"
+        )
+
+
+@router.get("/projects/{project_id}/container/status")
+async def get_project_container_status(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get container status for a project."""
+    try:
+        status_info = await ContainerService.get_project_container_status(
+            db=db,
+            project_id=project_id,
+            user=current_user
+        )
+        return status_info
+    except (NotFoundError, ForbiddenError) as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to get container status: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get container status"
+        )
+
+
+@router.post("/projects/{project_id}/container/execute")
+async def execute_project_command(
+    project_id: UUID,
+    command: ContainerCommand,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Execute a command in project container."""
+    try:
+        result = await ContainerService.execute_project_command(
+            db=db,
+            project_id=project_id,
+            user=current_user,
+            command=command.command,
+            workdir=command.workdir
+        )
+        return result
+    except (NotFoundError, ValidationError, ForbiddenError) as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to execute project command: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to execute command"
+        )
+
+
+@router.get("/projects/{project_id}/container/logs")
+async def get_project_container_logs(
+    project_id: UUID,
+    tail: int = Query(100, ge=1, le=1000),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get logs from project container."""
+    try:
+        logs = await ContainerService.get_project_container_logs(
+            db=db,
+            project_id=project_id,
+            user=current_user,
+            tail=tail
+        )
+        return {"logs": logs, "tail": tail}
+    except (NotFoundError, ForbiddenError) as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to get project container logs: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get container logs"
         ) 

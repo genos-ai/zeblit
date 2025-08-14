@@ -1,10 +1,11 @@
 """
 Container service for managing development environments.
 
-*Version: 1.0.0*
+*Version: 1.1.0*
 *Author: AI Development Platform Team*
 
 ## Changelog
+- 1.1.0 (2025-01-11): Added project-specific container methods for backend-first API.
 - 1.0.0 (2024-12-17): Initial container service implementation.
 """
 
@@ -21,7 +22,7 @@ from sqlalchemy.orm import selectinload
 from modules.backend.models import Container, Project, User
 from modules.backend.models.enums import ContainerStatus
 from modules.backend.repositories.container import ContainerRepository
-from modules.backend.integrations.orbstack import orbstack_client
+from modules.backend.core.orbstack_client import orbstack_client
 from modules.backend.core.config import settings
 from modules.backend.core.exceptions import (
     ValidationError,
@@ -433,6 +434,145 @@ class ContainerService:
             
         except Exception as e:
             logger.error(f"Failed to get project container: {e}")
+            raise
+    
+    async def start_project_container(
+        self,
+        db: AsyncSession,
+        project_id: UUID,
+        user: User
+    ) -> Container:
+        """Start or create container for a project."""
+        try:
+            # Check if container exists
+            container = await self.get_project_container(db, project_id, user)
+            
+            if container:
+                # Start existing container
+                if not container.is_running:
+                    return await self.start_container(db, container.id, user)
+                return container
+            else:
+                # Create new container
+                return await self.create_container(db, project_id, user)
+                
+        except Exception as e:
+            logger.error(f"Failed to start project container: {e}")
+            raise
+    
+    async def stop_project_container(
+        self,
+        db: AsyncSession,
+        project_id: UUID,
+        user: User
+    ) -> bool:
+        """Stop container for a project."""
+        try:
+            container = await self.get_project_container(db, project_id, user)
+            
+            if container and container.is_running:
+                await self.stop_container(db, container.id, user)
+                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Failed to stop project container: {e}")
+            raise
+    
+    async def get_project_container_status(
+        self,
+        db: AsyncSession,
+        project_id: UUID,
+        user: User
+    ) -> Dict[str, Any]:
+        """Get container status for a project."""
+        try:
+            container = await self.get_project_container(db, project_id, user)
+            
+            if not container:
+                return {
+                    "has_container": False,
+                    "status": "none",
+                    "container_id": None
+                }
+            
+            # Get detailed info if running
+            container_info = {}
+            if container.is_running:
+                container_info = await orbstack_client.get_container_info(container.container_id)
+            
+            return {
+                "has_container": True,
+                "status": container.status,
+                "container_id": str(container.id),
+                "created_at": container.created_at.isoformat(),
+                "last_activity": container.last_activity_at.isoformat() if container.last_activity_at else None,
+                "uptime_minutes": container.uptime_minutes if container.is_running else 0,
+                "external_port": container.external_port,
+                "resource_usage": container.resource_usage_percentage,
+                "container_info": container_info or {}
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get project container status: {e}")
+            raise
+    
+    async def execute_project_command(
+        self,
+        db: AsyncSession,
+        project_id: UUID,
+        user: User,
+        command: List[str],
+        workdir: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Execute a command in project container."""
+        try:
+            container = await self.get_project_container(db, project_id, user)
+            
+            if not container:
+                # Auto-create container if it doesn't exist
+                container = await self.start_project_container(db, project_id, user)
+            
+            # Ensure container is running
+            if not container.is_running:
+                container = await self.start_container(db, container.id, user)
+            
+            # Execute command
+            exit_code, output = await self.execute_command(
+                db, container.id, user, command, workdir
+            )
+            
+            return {
+                "exit_code": exit_code,
+                "output": output,
+                "command": command,
+                "workdir": workdir,
+                "executed_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to execute project command: {e}")
+            raise
+    
+    async def get_project_container_logs(
+        self,
+        db: AsyncSession,
+        project_id: UUID,
+        user: User,
+        tail: int = 100
+    ) -> str:
+        """Get logs from project container."""
+        try:
+            container = await self.get_project_container(db, project_id, user)
+            
+            if not container:
+                return "No container found for this project"
+            
+            return await self.get_container_logs(db, container.id, user, tail)
+            
+        except Exception as e:
+            logger.error(f"Failed to get project container logs: {e}")
             raise
     
     async def _get_container_with_access(

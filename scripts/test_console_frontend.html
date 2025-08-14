@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console Interceptor Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        .test-section {
+            background-color: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #404040;
+        }
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #005a9e;
+        }
+        .error-button {
+            background-color: #dc3545;
+        }
+        .error-button:hover {
+            background-color: #c82333;
+        }
+        .warning-button {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .warning-button:hover {
+            background-color: #e0a800;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #28a745;
+            color: white;
+        }
+        .status.disconnected {
+            background-color: #dc3545;
+            color: white;
+        }
+        pre {
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Console Interceptor Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Connection Status</h2>
+        <div id="connection-status" class="status disconnected">
+            Disconnected - Console interceptor not initialized
+        </div>
+        <button onclick="initializeInterceptor()">Initialize Console Interceptor</button>
+        <button onclick="destroyInterceptor()">Destroy Console Interceptor</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log Tests</h2>
+        <p>Click these buttons to test different console methods:</p>
+        <button onclick="testConsoleLog()">console.log</button>
+        <button onclick="testConsoleInfo()">console.info</button>
+        <button onclick="testConsoleDebug()">console.debug</button>
+        <button class="warning-button" onclick="testConsoleWarn()">console.warn</button>
+        <button class="error-button" onclick="testConsoleError()">console.error</button>
+        <button onclick="testConsoleTable()">console.table</button>
+        <button onclick="testConsoleDir()">console.dir</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Error Tests</h2>
+        <p>Click these buttons to test error handling:</p>
+        <button class="error-button" onclick="testRuntimeError()">Runtime Error</button>
+        <button class="error-button" onclick="testReferenceError()">Reference Error</button>
+        <button class="error-button" onclick="testTypeError()">Type Error</button>
+        <button class="error-button" onclick="testUnhandledRejection()">Unhandled Promise Rejection</button>
+        <button class="error-button" onclick="testNetworkError()">Network Error</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Complex Object Tests</h2>
+        <p>Test logging complex objects and circular references:</p>
+        <button onclick="testComplexObject()">Complex Object</button>
+        <button onclick="testCircularReference()">Circular Reference</button>
+        <button onclick="testLargeObject()">Large Object</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Performance Tests</h2>
+        <p>Test high-frequency logging:</p>
+        <button onclick="testHighFrequency()">High Frequency Logging</button>
+        <button onclick="testBurstLogging()">Burst Logging</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <pre id="test-results">No tests run yet...</pre>
+    </div>
+
+    <script>
+        // Mock console interceptor for testing
+        let mockInterceptor = null;
+        let testResults = [];
+
+        function log(message) {
+            testResults.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            updateTestResults();
+        }
+
+        function updateTestResults() {
+            document.getElementById('test-results').textContent = testResults.slice(-20).join('\n');
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connection-status');
+            if (connected) {
+                statusEl.textContent = 'Connected - Console interceptor active';
+                statusEl.className = 'status connected';
+            } else {
+                statusEl.textContent = 'Disconnected - Console interceptor not active';
+                statusEl.className = 'status disconnected';
+            }
+        }
+
+        function initializeInterceptor() {
+            // In a real implementation, this would initialize the ConsoleInterceptor
+            // For testing, we'll just simulate it
+            mockInterceptor = {
+                active: true,
+                projectId: 'test-project',
+                wsUrl: 'ws://localhost:8000'
+            };
+            updateConnectionStatus(true);
+            log('Console interceptor initialized');
+            
+            // Test that console methods still work
+            console.log('✅ Console interceptor initialized successfully');
+        }
+
+        function destroyInterceptor() {
+            mockInterceptor = null;
+            updateConnectionStatus(false);
+            log('Console interceptor destroyed');
+        }
+
+        // Console method tests
+        function testConsoleLog() {
+            console.log('🔍 Testing console.log with string and object', { test: 'data', number: 42 });
+            log('Executed console.log test');
+        }
+
+        function testConsoleInfo() {
+            console.info('ℹ️ Testing console.info with informational message');
+            log('Executed console.info test');
+        }
+
+        function testConsoleDebug() {
+            console.debug('🐛 Testing console.debug with debug information', { debugData: true });
+            log('Executed console.debug test');
+        }
+
+        function testConsoleWarn() {
+            console.warn('⚠️ Testing console.warn with warning message');
+            log('Executed console.warn test');
+        }
+
+        function testConsoleError() {
+            console.error('❌ Testing console.error with error message');
+            log('Executed console.error test');
+        }
+
+        function testConsoleTable() {
+            const tableData = [
+                { name: 'Alice', age: 30, city: 'New York' },
+                { name: 'Bob', age: 25, city: 'Los Angeles' },
+                { name: 'Charlie', age: 35, city: 'Chicago' }
+            ];
+            console.table(tableData);
+            log('Executed console.table test');
+        }
+
+        function testConsoleDir() {
+            const complexObj = {
+                name: 'Test Object',
+                nested: {
+                    level1: {
+                        level2: {
+                            data: 'deep nested data'
+                        }
+                    }
+                },
+                array: [1, 2, 3, 4, 5]
+            };
+            console.dir(complexObj);
+            log('Executed console.dir test');
+        }
+
+        // Error tests
+        function testRuntimeError() {
+            try {
+                // This will throw a ReferenceError
+                nonExistentFunction();
+            } catch (error) {
+                // The error should be caught by the global error handler
+                log('Runtime error test executed (error should be captured)');
+            }
+        }
+
+        function testReferenceError() {
+            try {
+                // This will throw a ReferenceError
+                console.log(undefinedVariable);
+            } catch (error) {
+                log('Reference error test executed (error should be captured)');
+            }
+        }
+
+        function testTypeError() {
+            try {
+                // This will throw a TypeError
+                const nullObj = null;
+                console.log(nullObj.someProperty);
+            } catch (error) {
+                log('Type error test executed (error should be captured)');
+            }
+        }
+
+        function testUnhandledRejection() {
+            // Create an unhandled promise rejection
+            new Promise((resolve, reject) => {
+                reject(new Error('Test unhandled promise rejection'));
+            });
+            log('Unhandled rejection test executed');
+        }
+
+        function testNetworkError() {
+            // Test a network error
+            fetch('https://nonexistent-domain-for-testing.com/api/test')
+                .catch(error => {
+                    console.error('Network error caught:', error);
+                });
+            log('Network error test executed');
+        }
+
+        // Complex object tests
+        function testComplexObject() {
+            const complexObj = {
+                string: 'Hello World',
+                number: 42,
+                boolean: true,
+                null: null,
+                undefined: undefined,
+                array: [1, 2, 3, { nested: 'array object' }],
+                object: {
+                    nested: {
+                        deeply: {
+                            nested: 'value'
+                        }
+                    }
+                },
+                function: function() { return 'test'; },
+                date: new Date(),
+                regex: /test/g
+            };
+            console.log('🔍 Complex object test:', complexObj);
+            log('Complex object test executed');
+        }
+
+        function testCircularReference() {
+            const obj = { name: 'circular' };
+            obj.self = obj; // Create circular reference
+            console.log('🔄 Circular reference test:', obj);
+            log('Circular reference test executed');
+        }
+
+        function testLargeObject() {
+            const largeObj = {};
+            for (let i = 0; i < 100; i++) {
+                largeObj[`property_${i}`] = `value_${i}`;
+            }
+            console.log('📦 Large object test:', largeObj);
+            log('Large object test executed');
+        }
+
+        // Performance tests
+        function testHighFrequency() {
+            log('Starting high frequency logging test...');
+            for (let i = 0; i < 50; i++) {
+                console.log(`High frequency log ${i + 1}`);
+            }
+            log('High frequency logging test completed');
+        }
+
+        function testBurstLogging() {
+            log('Starting burst logging test...');
+            const messages = [
+                'Burst message 1',
+                'Burst message 2',
+                'Burst message 3',
+                'Burst message 4',
+                'Burst message 5'
+            ];
+            messages.forEach((msg, index) => {
+                setTimeout(() => {
+                    console.log(msg);
+                }, index * 100);
+            });
+            log('Burst logging test started');
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Test page loaded');
+            updateConnectionStatus(false);
+        });
+    </script>
+</body>
+</html> 
