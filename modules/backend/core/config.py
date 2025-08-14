@@ -180,6 +180,10 @@ class Settings(BaseSettings):
         default=50.0,
         description="Default monthly cost limit per user in USD"
     )
+    MAX_API_KEYS_PER_USER: int = Field(
+        default=5,
+        description="Maximum API keys per user"
+    )
     
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

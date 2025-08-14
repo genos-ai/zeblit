@@ -230,4 +230,87 @@ async def get_current_admin_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    return current_user 
+    return current_user
+
+
+async def get_current_user_from_api_key(
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    """
+    Get current user from API key authentication.
+    
+    Args:
+        authorization: Authorization header with API key
+        db: Database session
+        
+    Returns:
+        User object if API key is valid, None otherwise
+    """
+    if not authorization:
+        return None
+    
+    # Check for API key format: "Bearer api_key" or "Api-Key api_key"
+    if authorization.startswith("Bearer "):
+        api_key = authorization[7:]  # Remove "Bearer "
+    elif authorization.startswith("Api-Key "):
+        api_key = authorization[8:]  # Remove "Api-Key "
+    else:
+        return None
+    
+    # Validate API key format (should start with "zbl_")
+    if not api_key.startswith("zbl_"):
+        return None
+    
+    try:
+        # Import here to avoid circular imports
+        from modules.backend.services.api_key import get_api_key_service
+        
+        api_key_service = get_api_key_service(db)
+        user = await api_key_service.validate_api_key(api_key)
+        
+        return user
+        
+    except Exception:
+        return None
+
+
+async def get_current_user_multi_auth(
+    # Try JWT first
+    jwt_user: Optional[User] = Depends(get_current_user_optional),
+    # Then try API key
+    api_key_user: Optional[User] = Depends(get_current_user_from_api_key),
+) -> User:
+    """
+    Get current user from either JWT token or API key.
+    
+    This dependency supports both authentication methods:
+    - JWT tokens (for web clients)
+    - API keys (for CLI, Telegram, mobile clients)
+    
+    Args:
+        jwt_user: User from JWT authentication
+        api_key_user: User from API key authentication
+        
+    Returns:
+        User object
+        
+    Raises:
+        HTTPException: If no valid authentication is provided
+    """
+    user = jwt_user or api_key_user
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+    
+    return user 
