@@ -18,7 +18,7 @@ mkdir -p logs/backend logs/errors logs/daily logs/archive
 
 # Kill any existing backend processes
 echo "Stopping any existing backend processes..."
-pkill -f "uvicorn src.backend.main:app" 2>/dev/null
+pkill -f "uvicorn modules.backend.main:app" 2>/dev/null
 
 # Wait a moment for processes to clean up
 sleep 2
@@ -39,7 +39,7 @@ LOG_LEVEL_LOWER=$(echo "$LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
 
 # Start the backend
 echo "Starting backend server..."
-$PYTHON_EXEC -m uvicorn src.backend.main:app \
+$PYTHON_EXEC -m uvicorn modules.backend.main:app \
     --reload \
     --host 0.0.0.0 \
     --port 8000 \
