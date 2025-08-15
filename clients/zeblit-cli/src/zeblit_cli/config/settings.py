@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, asdict
 
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 
 logger = logging.getLogger(__name__)
 

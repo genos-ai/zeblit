@@ -34,6 +34,7 @@ anthropic
 celery
 celery[redis]
 flower  # Celery monitoring tool
+croniter  # Cron expression parsing
 
 # Container management
 docker

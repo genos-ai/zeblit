@@ -23,8 +23,10 @@ from modules.backend.api.v1.endpoints import (
     frontend_logs,
     git,
     health,
+    models,
     orchestration,
     projects,
+    scheduled_tasks,
     users,
     websocket
 )
@@ -45,4 +47,6 @@ api_router.include_router(frontend_logs.router, prefix="/logs", tags=["logs"])
 api_router.include_router(console.router, prefix="/console", tags=["console"])
 api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(orchestration.router, prefix="/orchestration", tags=["orchestration"])
+api_router.include_router(scheduled_tasks.router, tags=["scheduled-tasks"])
+api_router.include_router(models.router, tags=["models"])
 api_router.include_router(websocket.router, prefix="/ws", tags=["websocket"]) 

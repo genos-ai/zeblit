@@ -39,8 +39,14 @@ class AgentOrchestrator:
     def __init__(self):
         """Initialize the agent orchestrator."""
         self._active_agents: Dict[str, BaseAgent] = {}
-        self._conversation_service = ConversationService()
+        self._conversation_service = None
         self._llm_provider = get_llm_provider()
+    
+    def _get_conversation_service(self, db: AsyncSession) -> ConversationService:
+        """Get conversation service with database session."""
+        if not self._conversation_service:
+            self._conversation_service = ConversationService(db)
+        return self._conversation_service
     
     async def process_user_message(
         self,
@@ -347,7 +353,8 @@ class AgentOrchestrator:
             console_context = await console_service.get_console_context_for_ai(project_id)
             
             # Get recent conversation history
-            recent_conversations = await self._conversation_service.get_recent_conversations(
+            conversation_service = self._get_conversation_service(db)
+            recent_conversations = await conversation_service.get_recent_conversations(
                 db, project_id, limit=10
             )
             
@@ -477,5 +484,7 @@ class AgentOrchestrator:
         pass
 
 
-# Global agent orchestrator instance
-agent_orchestrator = AgentOrchestrator()
+# Factory function for creating agent orchestrator instances
+def get_agent_orchestrator() -> AgentOrchestrator:
+    """Get an agent orchestrator instance."""
+    return AgentOrchestrator()

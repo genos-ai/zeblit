@@ -152,6 +152,44 @@ Error: Container not running
 Suggestion: Run 'zeblit container start' first
 ```
 
+## New Features (Phase 3 Complete!)
+
+### 🚀 Enhanced Performance
+- **Progress Bars**: Beautiful progress indicators for file uploads and long operations
+- **Offline Caching**: Smart caching with configurable TTL for improved performance
+- **Tab Completion**: Full shell completion for commands, project IDs, and file paths
+
+### 🔧 Developer Experience
+- **Better Error Handling**: User-friendly error messages with actionable suggestions
+- **Real-time Console**: WebSocket-based console streaming with live updates
+- **Cache Management**: Built-in cache statistics and management commands
+
+### 📊 Additional Commands
+
+```bash
+# Enhanced console streaming
+zeblit console stream --project <id>
+zeblit console history --lines 200
+zeblit console clear
+
+# Cache management
+zeblit cache --stats
+zeblit cache --clear
+zeblit cache --cleanup
+
+# Shell completion setup
+zeblit setup-completion
+
+# Enhanced project info
+zeblit project info <project-id>
+
+# API key management
+zeblit auth keys list
+zeblit auth keys create --name "laptop" --expires-in-days 30
+zeblit auth keys revoke <key-id>
+Suggestion: Run 'zeblit container start' first
+```
+
 ## Examples
 
 ### Complete Workflow

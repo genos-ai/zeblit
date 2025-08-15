@@ -297,23 +297,69 @@ class ZeblitAPIClient:
         
         # Convert HTTP URL to WebSocket URL
         ws_url = self.settings.api_base_url.replace("http://", "ws://").replace("https://", "wss://")
-        ws_url = f"{ws_url}/ws/projects/{project_id}/console"
-        
-        headers = {"Authorization": f"Bearer {api_key}"}
+        ws_url = f"{ws_url}/ws/projects/{project_id}/console?token={api_key}"
         
         try:
-            async with websockets.connect(ws_url, extra_headers=headers) as websocket:
+            async with websockets.connect(ws_url) as websocket:
+                # Send initial connection message
+                yield {"type": "connected", "payload": {"project_id": project_id}}
+                
                 async for message in websocket:
                     try:
                         data = json.loads(message)
                         yield data
                     except json.JSONDecodeError:
                         logger.warning(f"Invalid JSON from WebSocket: {message}")
+                        yield {
+                            "type": "error", 
+                            "payload": {"error": f"Invalid message format: {message}"}
+                        }
                         
         except websockets.exceptions.ConnectionClosed:
             logger.info("WebSocket connection closed")
-        except Exception as e:
+            yield {"type": "disconnected", "payload": {"reason": "Connection closed"}}
+        except websockets.exceptions.InvalidURI:
+            raise APIError(f"Invalid WebSocket URL: {ws_url}")
+        except websockets.exceptions.WebSocketException as e:
             logger.error(f"WebSocket error: {e}")
+            raise APIError(f"WebSocket connection failed: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected WebSocket error: {e}")
+            raise APIError(f"WebSocket connection failed: {str(e)}")
+    
+    async def connect_general_websocket(self, project_id: str = None) -> AsyncGenerator[Dict[str, Any], None]:
+        """Connect to general WebSocket for real-time updates."""
+        api_key = await self.auth_manager.get_api_key()
+        if not api_key:
+            raise APIError("No API key available for WebSocket connection")
+        
+        # Convert HTTP URL to WebSocket URL
+        ws_url = self.settings.api_base_url.replace("http://", "ws://").replace("https://", "wss://")
+        ws_url = f"{ws_url}/ws/connect?token={api_key}"
+        if project_id:
+            ws_url += f"&project_id={project_id}"
+        
+        try:
+            async with websockets.connect(ws_url) as websocket:
+                # Send initial connection message
+                yield {"type": "connected", "payload": {"project_id": project_id}}
+                
+                async for message in websocket:
+                    try:
+                        data = json.loads(message)
+                        yield data
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON from WebSocket: {message}")
+                        yield {
+                            "type": "error", 
+                            "payload": {"error": f"Invalid message format: {message}"}
+                        }
+                        
+        except websockets.exceptions.ConnectionClosed:
+            logger.info("General WebSocket connection closed")
+            yield {"type": "disconnected", "payload": {"reason": "Connection closed"}}
+        except Exception as e:
+            logger.error(f"General WebSocket error: {e}")
             raise APIError(f"WebSocket connection failed: {str(e)}")
     
     # API Key management

@@ -120,6 +120,39 @@ async def health_check():
     }
 
 
+@app.get("/v1/models", tags=["compatibility"])
+async def models_compatibility():
+    """
+    OpenAI-compatible models endpoint.
+    
+    This endpoint provides compatibility with tools that expect
+    the models endpoint at /v1/models instead of /api/v1/models.
+    """
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": "claude-3-5-sonnet-20241022",
+                "object": "model",
+                "created": 1640995200,
+                "owned_by": "anthropic",
+                "permission": [],
+                "root": "claude-3-5-sonnet-20241022",
+                "parent": None
+            },
+            {
+                "id": "gpt-4o-mini",
+                "object": "model", 
+                "created": 1640995200,
+                "owned_by": "openai",
+                "permission": [],
+                "root": "gpt-4o-mini",
+                "parent": None
+            }
+        ]
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     

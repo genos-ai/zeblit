@@ -19,7 +19,8 @@ from modules.backend.core.config import settings
 from modules.backend.models import (
     User, Project, Agent, Task, Container,
     Conversation, AgentMessage, ProjectFile,
-    GitBranch, AuditLog, ProjectTemplate, CostTracking
+    GitBranch, AuditLog, ProjectTemplate, CostTracking,
+    ScheduledTask, ScheduledTaskRun
 )
 
 # this is the Alembic Config object, which provides

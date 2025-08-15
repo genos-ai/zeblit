@@ -2,6 +2,19 @@
 
 # Zeblit Backend Startup Script
 # This script ensures the backend starts with proper logging configuration
+#
+# Usage: ./start_backend.sh [LOG_LEVEL]
+# Examples:
+#   ./start_backend.sh WARNING    # Only warnings and errors
+#   ./start_backend.sh ERROR      # Only errors
+#   ./start_backend.sh DEBUG      # All debug information
+#   ./start_backend.sh            # Uses INFO (default)
+
+# Accept log level as first argument
+if [ $# -gt 0 ]; then
+    LOG_LEVEL="$1"
+    echo "Using command line log level: $LOG_LEVEL"
+fi
 
 echo "Starting Zeblit Backend..."
 echo "Logs will be written to:"
@@ -38,7 +51,7 @@ export ENVIRONMENT="${ENVIRONMENT:-development}"
 LOG_LEVEL_LOWER=$(echo "$LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
 
 # Start the backend
-echo "Starting backend server..."
+echo "Starting backend server with log level: $LOG_LEVEL"
 $PYTHON_EXEC -m uvicorn modules.backend.main:app \
     --reload \
     --host 0.0.0.0 \

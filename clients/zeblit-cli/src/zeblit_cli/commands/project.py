@@ -20,6 +20,14 @@ from rich.prompt import Confirm
 from zeblit_cli.config.settings import get_settings, set_current_project
 from zeblit_cli.auth.manager import get_auth_manager
 from zeblit_cli.api.client import ZeblitAPIClient, APIError
+from zeblit_cli.utils import (
+    with_progress,
+    show_error,
+    show_success,
+    show_info,
+    project_id_completion,
+    template_completion
+)
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -51,33 +59,32 @@ async def create_project_cmd(name: str, template: Optional[str], description: Op
         async with ZeblitAPIClient(auth_manager) as api_client:
             auth_manager.set_api_client(api_client)
             
-            console.print(f"🚀 Creating project '[bold]{name}[/bold]'...")
-            
-            # Create project
-            project = await api_client.create_project(
-                name=name,
-                description=description,
-                template=template
+            # Create project with progress
+            project = await with_progress(
+                api_client.create_project(name=name, description=description, template=template),
+                f"Creating project '{name}'...",
+                "Project created successfully!"
             )
             
             # Set as current project
             project_id = project.get("id")
             if project_id:
                 set_current_project(project_id)
-            
-            console.print("✅ [green]Project created successfully![/green]")
-            console.print(f"[bold]Name:[/bold] {project.get('name', name)}")
-            console.print(f"[bold]ID:[/bold] {project_id}")
-            if template:
-                console.print(f"[bold]Template:[/bold] {template}")
-            if description:
-                console.print(f"[bold]Description:[/bold] {description}")
-            
-            console.print(f"\n🎯 Project '[bold]{name}[/bold]' is now your active project!")
-            console.print("Next steps:")
-            console.print("  • [bold]zeblit chat 'What should I build?'[/bold] - Ask the Dev Manager")
-            console.print("  • [bold]zeblit container start[/bold] - Start the development environment")
-            console.print("  • [bold]zeblit files tree[/bold] - Explore the project structure")
+                
+                show_success(f"Project '{project.get('name', name)}' created successfully!")
+                show_info(f"Project ID: {project_id}")
+                if template:
+                    show_info(f"Template: {template}")
+                if description:
+                    show_info(f"Description: {description}")
+                
+                console.print(f"\n🎯 Project '[bold]{name}[/bold]' is now your active project!")
+                console.print("Next steps:")
+                console.print("  • [bold]zeblit chat 'What should I build?'[/bold] - Ask the Dev Manager")
+                console.print("  • [bold]zeblit container start[/bold] - Start the development environment")
+                console.print("  • [bold]zeblit files tree[/bold] - Explore the project structure")
+            else:
+                show_error("Failed to create project", "No project ID returned from server")
             
     except Exception as e:
         console.print(f"[red]Error creating project:[/red] {str(e)}")

@@ -26,6 +26,15 @@ from zeblit_cli.commands.chat import chat_commands
 from zeblit_cli.commands.container import container_commands
 from zeblit_cli.commands.files import file_commands
 from zeblit_cli.commands.console import console_commands
+from zeblit_cli.commands.schedule import schedule_commands
+from zeblit_cli.utils import (
+    show_error, 
+    show_warning, 
+    show_success,
+    project_id_completion,
+    template_completion,
+    setup_completion
+)
 
 console = Console()
 
@@ -87,6 +96,7 @@ cli.add_command(chat_commands, name="chat")
 cli.add_command(container_commands, name="container")
 cli.add_command(file_commands, name="files")
 cli.add_command(console_commands, name="console")
+cli.add_command(schedule_commands, name="schedule")
 
 
 # Convenience aliases for common commands
@@ -146,6 +156,49 @@ def logs(ctx):
     asyncio.run(logs_cmd())
 
 
+@cli.command()
+@click.option("--project", "-p", help="Project ID")
+@click.pass_context
+def console(ctx, project: Optional[str]):
+    """Stream real-time console output (alias for 'console stream')."""
+    from zeblit_cli.commands.console import stream_console_cmd
+    asyncio.run(stream_console_cmd(project, follow=True))
+
+
+@cli.command("setup-completion")
+@click.pass_context
+def setup_completion_cmd(ctx):
+    """Setup tab completion for your shell."""
+    if setup_completion():
+        show_success("Tab completion has been set up successfully!")
+    else:
+        show_error("Failed to setup tab completion")
+
+
+@cli.command("cache")
+@click.option("--clear", is_flag=True, help="Clear all cached data")
+@click.option("--stats", is_flag=True, help="Show cache statistics")
+@click.option("--cleanup", is_flag=True, help="Remove expired cache entries")
+@click.pass_context
+def cache_cmd(ctx, clear: bool, stats: bool, cleanup: bool):
+    """Manage offline cache."""
+    from zeblit_cli.utils import api_cache
+    
+    if clear:
+        if api_cache.cache.clear():
+            show_success("Cache cleared successfully")
+        else:
+            show_error("Failed to clear cache")
+    elif cleanup:
+        api_cache.cleanup()
+        show_success("Expired cache entries cleaned up")
+    elif stats:
+        api_cache.show_cache_info()
+    else:
+        # Show cache info by default
+        api_cache.show_cache_info()
+
+
 # Global error handler
 def handle_exception(exc_type, exc_value, exc_traceback):
     """Global exception handler."""
@@ -158,16 +211,72 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         debug_mode = settings.debug
     except:
         debug_mode = False
-        
-    if debug_mode:
-        # Show full traceback in debug mode
-        import traceback
-        console.print("[red]Error:[/red]", style="bold")
-        console.print("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+    
+    # Import API error types
+    try:
+        from zeblit_cli.api.client import APIError
+    except ImportError:
+        APIError = None
+    
+    # Handle specific error types
+    if APIError and isinstance(exc_value, APIError):
+        if hasattr(exc_value, 'status_code') and exc_value.status_code:
+            if exc_value.status_code == 401:
+                show_error(
+                    "Authentication failed",
+                    "Your API key may be expired or invalid",
+                    "Run 'zeblit auth login' to authenticate again"
+                )
+            elif exc_value.status_code == 403:
+                show_error(
+                    "Access denied",
+                    str(exc_value),
+                    "Check your permissions for this resource"
+                )
+            elif exc_value.status_code == 404:
+                show_error(
+                    "Resource not found",
+                    str(exc_value),
+                    "Check the resource ID and try again"
+                )
+            elif exc_value.status_code >= 500:
+                show_error(
+                    "Server error",
+                    str(exc_value),
+                    "The server is experiencing issues. Please try again later."
+                )
+            else:
+                show_error(f"API Error ({exc_value.status_code})", str(exc_value))
+        else:
+            show_error("API Error", str(exc_value))
+    elif issubclass(exc_type, ConnectionError):
+        show_error(
+            "Connection failed",
+            "Unable to connect to the Zeblit server",
+            "Check your internet connection and the server URL in config"
+        )
+    elif issubclass(exc_type, FileNotFoundError):
+        show_error(
+            "File not found",
+            str(exc_value),
+            "Check the file path and try again"
+        )
+    elif issubclass(exc_type, PermissionError):
+        show_error(
+            "Permission denied",
+            str(exc_value),
+            "Check file permissions or run with appropriate privileges"
+        )
     else:
-        # Show user-friendly error message
-        console.print(f"[red]Error:[/red] {exc_value}")
-        console.print("[dim]Use --debug for more details[/dim]")
+        # Generic error handling
+        if debug_mode:
+            # Show full traceback in debug mode
+            import traceback
+            console.print("[red]Error:[/red]", style="bold")
+            console.print("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+        else:
+            # Show user-friendly error message
+            show_error(str(exc_value), suggestion="Use --debug for more details")
     
     sys.exit(1)
 

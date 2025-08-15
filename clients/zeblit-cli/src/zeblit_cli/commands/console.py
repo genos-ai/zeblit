@@ -138,8 +138,12 @@ async def handle_console_message(message: dict):
     
     else:
         # Unknown message type
-        if settings.preferences.verbose_output:
-            console.print(f"🔍 [dim]Unknown message: {msg_type}[/dim]")
+        try:
+            settings = get_settings()
+            if settings.preferences.verbose_output:
+                console.print(f"🔍 [dim]Unknown message: {msg_type}[/dim]")
+        except:
+            pass  # Ignore if settings unavailable
 
 
 @console_commands.command("clear")
@@ -163,9 +167,16 @@ async def clear_console_cmd(project_id: Optional[str]):
                 console.print("[red]No project specified[/red]")
                 return
         
-        # This would call a console clear endpoint
-        console.print("🧹 [yellow]Console clear functionality not yet implemented[/yellow]")
-        console.print("This would clear the console history on the server")
+        async with ZeblitAPIClient(auth_manager) as api_client:
+            auth_manager.set_api_client(api_client)
+            
+            # Call the console clear API
+            response = await api_client._request("DELETE", f"/projects/{project_id}/console/clear")
+            
+            if response.get("success", True):
+                console.print("🧹 [green]Console cleared successfully[/green]")
+            else:
+                console.print("[red]Failed to clear console[/red]")
             
     except Exception as e:
         console.print(f"[red]Error clearing console:[/red] {str(e)}")

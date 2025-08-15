@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from modules.backend.core.dependencies import get_db, get_current_user
 from modules.backend.models.user import User
 from modules.backend.services.agent import AgentService
-from modules.backend.services.agent_orchestrator import agent_orchestrator
+from modules.backend.services.agent_orchestrator import get_agent_orchestrator
 from modules.backend.schemas.agent import (
     AgentResponse,
     AgentListResponse,
@@ -273,7 +273,8 @@ async def chat_with_agent(
         Agent response with routing information
     """
     try:
-        response = await agent_orchestrator.process_user_message(
+        orchestrator = get_agent_orchestrator()
+        response = await orchestrator.process_user_message(
             db=db,
             user_id=current_user.id,
             project_id=project_id,
@@ -338,7 +339,8 @@ async def direct_agent_message(
                 detail=f"Invalid agent type: {agent_type}"
             )
         
-        response = await agent_orchestrator.route_to_agent(
+        orchestrator = get_agent_orchestrator()
+        response = await orchestrator.route_to_agent(
             db=db,
             project_id=project_id,
             agent_type=target_agent,
@@ -378,7 +380,8 @@ async def get_project_agents_status(
         List of agent statuses
     """
     try:
-        statuses = await agent_orchestrator.get_agents_status(
+        orchestrator = get_agent_orchestrator()
+        statuses = await orchestrator.get_agents_status(
             db=db,
             project_id=project_id
         )
@@ -409,6 +412,6 @@ async def get_all_agents_status():
     
     return {
         "system_status": "operational",
-        "active_agents": len(agent_orchestrator._active_agents),
+        "active_agents": len(get_agent_orchestrator()._active_agents),
         "timestamp": datetime.utcnow().isoformat()
     } 
