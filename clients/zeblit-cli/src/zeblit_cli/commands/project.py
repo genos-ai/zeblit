@@ -147,7 +147,7 @@ async def list_projects_cmd(limit: int = 20):
                 
                 table.add_row(
                     name,
-                    project.get("id", "N/A")[:8] + "...",  # Shortened ID
+                    project.get("id", "N/A"),  # Full ID
                     project.get("description", "No description")[:50],  # Truncated
                     created,
                     status
@@ -344,9 +344,9 @@ async def status_cmd():
             # Get project info
             try:
                 project = await api_client.get_project(settings.current_project_id)
-                console.print(f"📁 [bold]Project:[/bold] {project.get('name', 'N/A')} ({settings.current_project_id[:8]}...)")
+                console.print(f"📁 [bold]Project:[/bold] {project.get('name', 'N/A')} ({settings.current_project_id})")
             except:
-                console.print(f"📁 [bold]Project:[/bold] {settings.current_project_id[:8]}... [red](error loading details)[/red]")
+                console.print(f"📁 [bold]Project:[/bold] {settings.current_project_id} [red](error loading details)[/red]")
             
             # Get container status
             try:
