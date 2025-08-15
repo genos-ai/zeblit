@@ -161,7 +161,7 @@ Use the compound launch configuration:
 ### Backend Logs
 ```bash
 # Main application log
-tail -f logs/backend/ai_dev_platform_$(date +%Y-%m-%d).log
+tail -f logs/backend/zeblit_db_$(date +%Y-%m-%d).log
 
 # Error-only log
 tail -f logs/errors/errors_$(date +%Y-%m-%d).log
@@ -207,7 +207,7 @@ tail -f logs/backend/*.log | jq '.'
 redis-cli ping
 
 # Check PostgreSQL
-psql -U postgres -d ai_dev_platform -c "SELECT COUNT(*) FROM users;"
+psql -U postgres -d zeblit_db -c "SELECT COUNT(*) FROM users;"
 ```
 
 ## IDE Setup

@@ -40,7 +40,7 @@ cp env.example .env
 4. **Database Setup**
 ```bash
 # Create database
-createdb ai_dev_platform
+createdb zeblit_db
 
 # Run migrations
 cd src/backend && alembic upgrade head && cd ../..
@@ -88,7 +88,7 @@ pytest src/backend/tests/
 cd src/backend && alembic revision --autogenerate -m "description"
 
 # Check logs
-tail -f logs/backend/ai_dev_platform_$(date +%Y-%m-%d).log
+tail -f logs/backend/zeblit_db_$(date +%Y-%m-%d).log
 ```
 
 ### Frontend
@@ -106,10 +106,10 @@ cd frontend && bun test
 ### Database
 ```bash
 # Access PostgreSQL
-psql -U postgres -d ai_dev_platform
+psql -U postgres -d zeblit_db
 
 # Reset database
-dropdb ai_dev_platform && createdb ai_dev_platform
+dropdb zeblit_db && createdb zeblit_db
 cd src/backend && alembic upgrade head
 ```
 
@@ -135,7 +135,7 @@ cd src/backend && alembic upgrade head
 Key variables in root `.env`:
 ```bash
 # Backend
-DATABASE_URL=postgresql+asyncpg://user@localhost:5432/ai_dev_platform
+DATABASE_URL=postgresql+asyncpg://user@localhost:5432/zeblit_db
 REDIS_URL=redis://localhost:6379/0
 JWT_SECRET=your-secret-key
 
@@ -154,7 +154,7 @@ EMAIL_VALIDATION_SKIP_DELIVERABILITY=true
 - Breakpoints work in both frontend and backend
 
 ### Logs
-- Backend: `logs/backend/ai_dev_platform_*.log`
+- Backend: `logs/backend/zeblit_db_*.log`
 - Frontend: Browser console + `logs/frontend/`
 - Errors: `logs/errors/errors_*.log`
 

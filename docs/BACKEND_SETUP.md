@@ -68,7 +68,7 @@ Create a `.env` file in the `src/backend` directory:
 
 ```env
 # Database
-DATABASE_URL=postgresql+asyncpg://user:password@localhost/ai_dev_platform
+DATABASE_URL=postgresql+asyncpg://user:password@localhost/zeblit_db
 
 # Redis
 REDIS_URL=redis://localhost:6379
