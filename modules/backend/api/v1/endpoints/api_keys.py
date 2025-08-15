@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.core.database import get_db
-from modules.backend.core.dependencies import get_current_user
+from modules.backend.core.dependencies import get_current_user, get_current_user_multi_auth
 from modules.backend.models.user import User
 from modules.backend.services.api_key import get_api_key_service
 from modules.backend.core.exceptions import (
@@ -184,7 +184,7 @@ async def get_api_key_stats(
 @router.get("/validate")
 async def validate_current_api_key(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     Validate the current API key and return user information.

@@ -13,7 +13,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -124,11 +124,12 @@ class ConfigManager:
     def save_settings(self, settings: ZeblitSettings) -> None:
         """Save settings to config file."""
         try:
-            # Convert to dict, handling dataclasses
+            # Convert to dict, handling special objects
             config_dict = {}
             for key, value in settings.dict().items():
-                if key == "preferences":
-                    config_dict[key] = asdict(value)
+                if key == "preferences" and hasattr(value, '__dict__'):
+                    # Convert preferences object to dict
+                    config_dict[key] = value.__dict__
                 else:
                     config_dict[key] = value
             
@@ -156,7 +157,7 @@ class ConfigManager:
         # Handle nested preferences
         if key.startswith("preferences."):
             pref_key = key.split(".", 1)[1]
-            preferences = asdict(settings.preferences)
+            preferences = settings.preferences.__dict__.copy()
             preferences[pref_key] = value
             settings.preferences = UserPreferences(**preferences)
         else:
