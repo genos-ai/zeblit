@@ -187,7 +187,7 @@ class APIKeyServiceDB:
         self,
         user_id: UUID,
         include_inactive: bool = False
-    ) -> List[APIKey]:
+    ) -> List[Dict[str, Any]]:
         """
         List all API keys for a user.
         
@@ -196,7 +196,7 @@ class APIKeyServiceDB:
             include_inactive: Include inactive keys
             
         Returns:
-            List of API keys
+            List of API key information (without the actual keys)
         """
         try:
             filters = [APIKey.user_id == user_id]
@@ -205,7 +205,24 @@ class APIKeyServiceDB:
             
             stmt = select(APIKey).where(and_(*filters)).order_by(APIKey.created_at.desc())
             result = await self.db.execute(stmt)
-            return result.scalars().all()
+            api_keys = result.scalars().all()
+            
+            # Convert to dictionary format
+            keys = []
+            for api_key_obj in api_keys:
+                keys.append({
+                    "id": str(api_key_obj.id),
+                    "name": api_key_obj.name,
+                    "prefix": api_key_obj.prefix,
+                    "last_used": api_key_obj.last_used.isoformat() if api_key_obj.last_used else None,
+                    "expires_at": api_key_obj.expires_at.isoformat() if api_key_obj.expires_at else None,
+                    "is_active": api_key_obj.is_active,
+                    "is_expired": api_key_obj.is_expired,
+                    "created_at": api_key_obj.created_at.isoformat(),
+                    "metadata": api_key_obj.metadata or {}
+                })
+            
+            return keys
             
         except Exception as e:
             logger.error(f"Failed to list API keys for user {user_id}: {e}")

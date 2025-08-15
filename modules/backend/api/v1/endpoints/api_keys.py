@@ -16,9 +16,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.core.database import get_db
-from modules.backend.core.dependencies import get_current_user, get_current_user_multi_auth
+from modules.backend.core.dependencies import get_current_user_multi_auth
 from modules.backend.models.user import User
-from modules.backend.services.api_key import get_api_key_service
+from modules.backend.services.api_key_db import get_api_key_service
 from modules.backend.core.exceptions import (
     NotFoundError,
     ValidationError,
@@ -39,7 +39,7 @@ async def create_api_key(
     expires_in_days: Optional[int] = Body(None, description="Optional expiration in days"),
     client_type: Optional[str] = Body(None, description="Type of client (cli, telegram, web)"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     Create a new API key for the authenticated user.
@@ -50,17 +50,13 @@ async def create_api_key(
     try:
         api_key_service = get_api_key_service(db)
         
-        # Prepare metadata
-        metadata = {}
-        if client_type:
-            metadata["client_type"] = client_type
-        
         # Create API key
         api_key_obj, api_key_string = await api_key_service.create_api_key(
             user_id=current_user.id,
             name=name,
             expires_in_days=expires_in_days,
-            metadata=metadata
+            client_type=client_type,
+            metadata={"created_via": "api"}
         )
         
         return {
@@ -72,7 +68,7 @@ async def create_api_key(
                 "prefix": api_key_obj.prefix,
                 "expires_at": api_key_obj.expires_at.isoformat() if api_key_obj.expires_at else None,
                 "created_at": api_key_obj.created_at.isoformat(),
-                "metadata": api_key_obj.metadata
+                "metadata": dict(api_key_obj.metadata) if api_key_obj.metadata else {}
             },
             "warning": "Store this API key securely. It cannot be retrieved again."
         }
@@ -91,7 +87,7 @@ async def create_api_key(
 async def list_api_keys(
     include_inactive: bool = False,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     List all API keys for the authenticated user.
@@ -120,7 +116,7 @@ async def list_api_keys(
 async def revoke_api_key(
     key_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     Revoke (delete) an API key.
@@ -159,7 +155,7 @@ async def revoke_api_key(
 @router.get("/stats")
 async def get_api_key_stats(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     Get API key usage statistics for the authenticated user.

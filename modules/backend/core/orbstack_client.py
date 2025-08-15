@@ -68,7 +68,14 @@ class OrbStackClient:
     def client(self) -> docker.DockerClient:
         """Get Docker client instance."""
         if not self._client:
-            raise RuntimeError("OrbStack client not connected")
+            # Auto-connect on first access
+            try:
+                self._client = docker.from_env()
+                self._client.ping()
+                logger.info("OrbStack client auto-connected successfully")
+            except Exception as e:
+                logger.error(f"Failed to auto-connect OrbStack client: {e}")
+                raise RuntimeError(f"OrbStack client connection failed: {e}")
         return self._client
     
     async def _ensure_network(self) -> None:
@@ -165,7 +172,7 @@ class OrbStackClient:
                     "created_at": datetime.utcnow().isoformat()
                 },
                 # OrbStack optimizations
-                platform="linux/amd64",  # Ensure compatibility
+                # platform="linux/amd64",  # Let Docker auto-detect platform
                 extra_hosts={"host.docker.internal": "host-gateway"}  # Host access
             )
             

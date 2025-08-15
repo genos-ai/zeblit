@@ -263,20 +263,7 @@ async def get_current_user_from_api_key(
         return None
     
     try:
-        # Hardcoded test API key for development/testing
-        if api_key == "zbl_test_root_key_development_only":
-            from modules.backend.repositories.user import UserRepository
-            user_repo = UserRepository(db)
-            # Get the root user
-            from sqlalchemy import select
-            from modules.backend.models.user import User
-            stmt = select(User).where(User.username == "root")
-            result = await db.execute(stmt)
-            user = result.scalar_one_or_none()
-            if user and user.is_active:
-                return user
-        
-        # Import here to avoid circular imports
+        # Use database-backed API key service for all authentication
         from modules.backend.services.api_key_db import get_api_key_service
         
         api_key_service = get_api_key_service(db)

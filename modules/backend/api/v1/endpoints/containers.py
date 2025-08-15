@@ -46,7 +46,8 @@ router = APIRouter(
 
 def get_container_service() -> ContainerService:
     """Get container service instance."""
-    return ContainerService()
+    from modules.backend.services.container import container_service
+    return container_service
 
 
 @router.post("/projects/{project_id}/container", response_model=ContainerRead)
@@ -67,7 +68,8 @@ async def create_container(
         Created container
     """
     try:
-        container = await ContainerService.create_container(
+        container_service = get_container_service()
+        container = await container_service.create_container(
             db=db,
             project_id=project_id,
             user=current_user,
@@ -108,7 +110,8 @@ async def get_project_container(
         Container if exists, None otherwise
     """
     try:
-        container = await ContainerService.get_project_container(
+        container_service = get_container_service()
+        container = await container_service.get_project_container(
             db=db,
             project_id=project_id,
             user=current_user
@@ -132,7 +135,8 @@ async def start_container(
 ):
     """Start a stopped or sleeping container."""
     try:
-        container = await ContainerService.start_container(
+        container_service = get_container_service()
+        container = await container_service.start_container(
             db=db,
             container_id=container_id,
             user=current_user
@@ -156,7 +160,8 @@ async def stop_container(
 ):
     """Stop a running container."""
     try:
-        container = await ContainerService.stop_container(
+        container_service = get_container_service()
+        container = await container_service.stop_container(
             db=db,
             container_id=container_id,
             user=current_user
@@ -180,7 +185,8 @@ async def restart_container(
 ):
     """Restart a container."""
     try:
-        container = await ContainerService.restart_container(
+        container_service = get_container_service()
+        container = await container_service.restart_container(
             db=db,
             container_id=container_id,
             user=current_user
@@ -205,7 +211,8 @@ async def delete_container(
 ):
     """Delete a container."""
     try:
-        success = await ContainerService.delete_container(
+        container_service = get_container_service()
+        success = await container_service.delete_container(
             db=db,
             container_id=container_id,
             user=current_user,
@@ -236,7 +243,8 @@ async def get_container_stats(
 ):
     """Get container resource usage statistics."""
     try:
-        stats = await ContainerService.get_container_stats(
+        container_service = get_container_service()
+        stats = await container_service.get_container_stats(
             db=db,
             container_id=container_id,
             user=current_user
@@ -261,7 +269,8 @@ async def get_container_logs(
 ):
     """Get container logs."""
     try:
-        logs = await ContainerService.get_container_logs(
+        container_service = get_container_service()
+        logs = await container_service.get_container_logs(
             db=db,
             container_id=container_id,
             user=current_user,
@@ -296,7 +305,8 @@ async def execute_command(
         Command execution result
     """
     try:
-        exit_code, output = await ContainerService.execute_command(
+        container_service = get_container_service()
+        exit_code, output = await container_service.execute_command(
             db=db,
             container_id=container_id,
             user=current_user,
@@ -362,20 +372,27 @@ async def start_project_container(
 ):
     """Start or create container for a project."""
     try:
+        logger.info(f"Starting container for project {project_id}, user {current_user.id}")
         container_service = get_container_service()
+        logger.info(f"Got container service instance: {container_service}")
+        
         container = await container_service.start_project_container(
             db=db,
             project_id=project_id,
             user=current_user
         )
+        logger.info(f"Container started successfully: {container.id}")
         return {"container_id": str(container.id), "status": container.status}
     except (NotFoundError, ValidationError, ForbiddenError) as e:
+        logger.error(f"Container start failed with known error: {type(e).__name__}: {e}")
         raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
-        logger.error(f"Failed to start project container: {e}")
+        logger.error(f"Failed to start project container with unexpected error: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to start container"
+            detail=f"Failed to start container: {str(e)}"
         )
 
 
@@ -387,7 +404,8 @@ async def stop_project_container(
 ):
     """Stop container for a project."""
     try:
-        success = await ContainerService.stop_project_container(
+        container_service = get_container_service()
+        success = await container_service.stop_project_container(
             db=db,
             project_id=project_id,
             user=current_user
@@ -417,7 +435,7 @@ async def get_project_container_status(
             project_id=project_id,
             user=current_user
         )
-        return status_info
+        return {"data": status_info}
     except (NotFoundError, ForbiddenError) as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
@@ -437,7 +455,8 @@ async def execute_project_command(
 ):
     """Execute a command in project container."""
     try:
-        result = await ContainerService.execute_project_command(
+        container_service = get_container_service()
+        result = await container_service.execute_project_command(
             db=db,
             project_id=project_id,
             user=current_user,
@@ -464,7 +483,8 @@ async def get_project_container_logs(
 ):
     """Get logs from project container."""
     try:
-        logs = await ContainerService.get_project_container_logs(
+        container_service = get_container_service()
+        logs = await container_service.get_project_container_logs(
             db=db,
             project_id=project_id,
             user=current_user,

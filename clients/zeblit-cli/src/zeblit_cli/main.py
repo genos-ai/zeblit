@@ -43,11 +43,15 @@ def setup_logging(debug: bool = False, verbose: bool = False):
     """Setup logging configuration."""
     level = logging.DEBUG if debug else (logging.INFO if verbose else logging.WARNING)
     
+    # Create a separate console for logging to avoid Click conflicts
+    from rich.console import Console
+    log_console = Console(stderr=True)
+    
     logging.basicConfig(
         level=level,
         format="%(message)s",
         datefmt="[%X]",
-        handlers=[RichHandler(rich_tracebacks=True, console=console)]
+        handlers=[RichHandler(rich_tracebacks=True, console=log_console)]
     )
     
     # Reduce noise from dependencies

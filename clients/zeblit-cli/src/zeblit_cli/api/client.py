@@ -228,32 +228,32 @@ class ZeblitAPIClient:
     # Container management
     async def start_container(self, project_id: str) -> Dict[str, Any]:
         """Start project container."""
-        response = await self._request("POST", f"/projects/{project_id}/container/start")
+        response = await self._request("POST", f"/containers/projects/{project_id}/container/start")
         return response.get("data", {})
     
     async def stop_container(self, project_id: str) -> Dict[str, Any]:
         """Stop project container."""
-        response = await self._request("POST", f"/projects/{project_id}/container/stop")
+        response = await self._request("POST", f"/containers/projects/{project_id}/container/stop")
         return response.get("data", {})
     
     async def get_container_status(self, project_id: str) -> Dict[str, Any]:
         """Get container status."""
-        response = await self._request("GET", f"/projects/{project_id}/container/status")
+        response = await self._request("GET", f"/containers/projects/{project_id}/container/status")
         return response.get("data", {})
     
-    async def execute_command(self, project_id: str, command: str, working_dir: str = None) -> Dict[str, Any]:
+    async def execute_command(self, project_id: str, command: list, working_dir: str = None) -> Dict[str, Any]:
         """Execute command in project container."""
         data = {"command": command}
         if working_dir:
             data["working_directory"] = working_dir
         
-        response = await self._request("POST", f"/projects/{project_id}/container/execute", data)
+        response = await self._request("POST", f"/containers/projects/{project_id}/container/execute", data)
         return response.get("data", {})
     
     async def get_container_logs(self, project_id: str, lines: int = 100) -> Dict[str, Any]:
         """Get container logs."""
         params = {"lines": lines}
-        response = await self._request("GET", f"/projects/{project_id}/container/logs", params=params)
+        response = await self._request("GET", f"/containers/projects/{project_id}/container/logs", params=params)
         return response.get("data", {})
     
     # File management
@@ -373,11 +373,15 @@ class ZeblitAPIClient:
             data["expires_in_days"] = expires_in_days
         
         response = await self._request("POST", "/auth/keys", data)
-        return response.get("data", {})
+        # The API returns the result directly, not wrapped in {"data": {...}}
+        return response
     
     async def list_api_keys(self) -> List[Dict[str, Any]]:
         """List user's API keys."""
         response = await self._request("GET", "/auth/keys")
+        # The API returns a list directly, not wrapped in {"data": [...]}
+        if isinstance(response, list):
+            return response
         return response.get("data", [])
     
     async def revoke_api_key(self, key_id: str) -> bool:

@@ -146,11 +146,11 @@ async def container_status_cmd(project_id: Optional[str]):
 @click.option("--project", "-p", help="Project ID (uses current project if not specified)")
 def run_command(command: tuple, working_dir: Optional[str], project: Optional[str]):
     """Execute a command in the container."""
-    command_str = " ".join(command)
-    asyncio.run(run_command_cmd(command_str, working_dir, project))
+    command_list = list(command)
+    asyncio.run(run_command_cmd(command_list, working_dir, project))
 
 
-async def run_command_cmd(command: str, working_dir: Optional[str], project_id: Optional[str]):
+async def run_command_cmd(command: list, working_dir: Optional[str], project_id: Optional[str]):
     """Run command implementation."""
     try:
         auth_manager = get_auth_manager()
@@ -167,22 +167,17 @@ async def run_command_cmd(command: str, working_dir: Optional[str], project_id: 
         async with ZeblitAPIClient(auth_manager) as api_client:
             auth_manager.set_api_client(api_client)
             
-            console.print(f"⚡ Executing: [bold]{command}[/bold]")
+            console.print(f"⚡ Executing: [bold]{' '.join(command)}[/bold]")
             
             result = await api_client.execute_command(project_id, command, working_dir)
             
             # Display output
-            stdout = result.get("stdout", "")
-            stderr = result.get("stderr", "")
+            output = result.get("output", "")
             exit_code = result.get("exit_code", 0)
             
-            if stdout:
+            if output:
                 console.print("\n[bold]Output:[/bold]")
-                console.print(stdout)
-            
-            if stderr:
-                console.print("\n[bold red]Errors:[/bold red]")
-                console.print(stderr)
+                console.print(output.rstrip())
             
             if exit_code == 0:
                 console.print("✅ [green]Command completed successfully[/green]")
