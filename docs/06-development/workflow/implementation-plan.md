@@ -8,32 +8,36 @@ This document provides a comprehensive, step-by-step implementation plan for bui
 ### ✅ **COMPLETED PHASES**
 - **✅ Phase 0**: Project Setup and Foundation - **100% COMPLETE**
 - **✅ Phase 1**: Backend Core Infrastructure - **95% COMPLETE**
+- **🚨 Phase 1.5**: CLI Bug Fixes & API Issues - **0% COMPLETE** *(Critical Priority)*
 - **✅ Phase 2**: Container Management System - **100% COMPLETE**
 - **✅ Phase 3**: AI Agent System - **90% COMPLETE**
 
 ### 🏗️ **CURRENT STATUS**
 - **Backend Infrastructure**: Production-ready with full API, authentication, database, and container management
 - **AI Agent System**: 7 specialized agents working with Anthropic Claude 4 integration
-- **CLI Client**: Fully functional with all core features (projects, containers, agents, tasks)
+- **CLI Client**: ⚠️ 62% functional - **9 critical bugs identified requiring fixes**
 - **Container Management**: Complete Docker/OrbStack integration with lifecycle management
 - **Database**: PostgreSQL with comprehensive models and migrations
 - **Authentication**: JWT + API key system with database persistence
-- **Task Scheduling**: Cron-based scheduling system implemented
+- **Task Scheduling**: ❌ Non-functional - authentication issues prevent all operations
 
 ### 🎯 **NEXT PRIORITIES**
-1. **File System Integration** (Phase 2 remaining)
-2. **Frontend Development** (Phase 5)
-3. **Git Integration** (Phase 4)
-4. **WebSocket Real-time Features**
-5. **Production Deployment** (Phase 7)
+1. **CLI Bug Fixes** (Critical - 9 identified issues)
+2. **File System Integration** (Phase 2 remaining)
+3. **Frontend Development** (Phase 5)
+4. **Git Integration** (Phase 4)
+5. **WebSocket Real-time Features**
+6. **Production Deployment** (Phase 7)
 
 ### 📊 **Key Metrics Achieved**
 - **11 Database Models**: Fully implemented with relationships
-- **7 AI Agents**: All specialized agents working with project-specific conversations
+- **7 AI Agents**: All specialized agents working with project-specific conversations  
 - **15+ API Endpoints**: Complete REST API with versioning
-- **10+ CLI Commands**: Full-featured command-line interface
-- **Container Lifecycle**: Start, stop, status, logs, command execution
+- **15+ CLI Commands**: Comprehensive testing completed - 62% success rate
+- **Container Lifecycle**: Start, stop, status, logs ✅ | command execution ❌
 - **Authentication**: Multi-factor (JWT + API keys) with role-based access
+- **Performance**: All working CLI commands < 0.6s response time
+- **Testing Coverage**: 100% CLI functionality tested and documented
 
 ## Phase 0: Project Setup and Foundation (Week 1)
 
@@ -111,6 +115,14 @@ This document provides a comprehensive, step-by-step implementation plan for bui
 - [x] Add progress indicators and status displays
 - [x] Implement settings persistence
 - [x] Add comprehensive error handling
+
+### CLI Comprehensive Testing Results 🧪 **COMPLETED**
+- [x] **15+ Working Commands**: Core development workflow functional
+- [x] **Performance Testing**: All commands < 0.6s response time
+- [x] **Error Handling**: Proper validation and user guidance
+- [x] **Integration Testing**: Project → Container → Agent workflow working
+- [x] **Core Success Rate**: 62% of functionality working perfectly
+- ❌ **9 Critical Issues Identified**: Need systematic fixing (see Phase 1.5 below)
 
 ### Task Scheduling System ✅ **COMPLETED**
 - [x] Create ScheduledTask model and schema
@@ -268,6 +280,67 @@ This document provides a comprehensive, step-by-step implementation plan for bui
 - [ ] Implement sensitive data masking in logs
 - [ ] Add cost tracking logs for LLM usage
 - [ ] Update .gitignore to exclude /logs directory
+
+## Phase 1.5: CLI Bug Fixes & API Issues (Critical - Before Frontend) 🚨
+
+### **PRIORITY: CRITICAL** - CLI Testing Revealed 9 Major Issues
+
+Based on comprehensive CLI testing completed 2025-01-15, the following issues must be resolved:
+
+### High Priority Fixes (Breaks Core Workflows) 🔥
+- [ ] **Container Command Execution** - `zeblit container run` fails to execute commands
+  - Issue: "Failed to execute command" error
+  - Impact: Blocks development work in containers
+  - Location: `modules/backend/api/v1/endpoints/containers.py` + `services/container.py`
+  
+- [ ] **File Upload Functionality** - `zeblit files upload` has JSON decode error
+  - Issue: "JSON decode error" when uploading files
+  - Impact: Prevents file management workflow
+  - Location: `modules/backend/api/v1/endpoints/files.py`
+  
+- [ ] **Task Scheduling Authentication** - All `zeblit schedule *` commands fail
+  - Issue: "Could not validate credentials" for all schedule endpoints
+  - Impact: Entire task scheduling feature non-functional
+  - Location: `modules/backend/api/v1/endpoints/tasks.py` authentication
+
+### Medium Priority Fixes (Feature Improvements) 🟡
+- [ ] **Direct Agent Communication** - `zeblit chat send --agent Engineer` fails
+  - Issue: "'str' object has no attribute 'value'" error
+  - Impact: Limits agent specialization usage
+  - Location: `modules/backend/services/agent.py` or `agents/` routing
+
+- [ ] **Chat History Persistence** - `zeblit chat history` returns empty
+  - Issue: Conversations not being stored or retrieved
+  - Impact: Poor user experience, lost context
+  - Location: `modules/backend/services/conversation.py`
+
+- [ ] **Project Deletion** - `zeblit project delete` has internal server error
+  - Issue: "Internal server error" when deleting projects
+  - Impact: Data management and cleanup issues
+  - Location: `modules/backend/api/v1/endpoints/projects.py`
+
+### Low Priority Fixes (Convenience Features) 🟢  
+- [ ] **Run Alias Command** - `zeblit run` has TypeError
+  - Issue: "missing 1 required positional argument: 'project_id'"
+  - Impact: Convenience alias not working
+  - Location: `clients/zeblit-cli/src/zeblit_cli/main.py`
+
+- [ ] **API Key Management** - `zeblit auth keys` has server error
+  - Issue: "Internal server error" when listing API keys
+  - Impact: Advanced admin feature not accessible
+  - Location: `modules/backend/api/v1/endpoints/auth.py`
+
+- [ ] **Direct Chat Alias** - `zeblit chat "message"` not recognized
+  - Issue: Command structure doesn't support direct message input
+  - Impact: Less convenient chat interface
+  - Location: `clients/zeblit-cli/src/zeblit_cli/commands/chat.py`
+
+### Success Metrics for Phase 1.5
+- [ ] All High Priority issues resolved (3/3)
+- [ ] Container command execution working (python, ls, etc.)
+- [ ] File upload/download working end-to-end
+- [ ] Task scheduling functional with proper authentication
+- [ ] CLI success rate improved from 62% to 85%+
 
 ### Console & Error Capture System (CRITICAL - IMPLEMENT EARLY)
 - [ ] Create ConsoleInterceptor TypeScript class
