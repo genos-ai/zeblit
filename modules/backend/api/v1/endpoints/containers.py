@@ -44,6 +44,11 @@ router = APIRouter(
 )
 
 
+def get_container_service() -> ContainerService:
+    """Get container service instance."""
+    return ContainerService()
+
+
 @router.post("/projects/{project_id}/container", response_model=ContainerRead)
 async def create_container(
     project_id: UUID,
@@ -357,7 +362,8 @@ async def start_project_container(
 ):
     """Start or create container for a project."""
     try:
-        container = await ContainerService.start_project_container(
+        container_service = get_container_service()
+        container = await container_service.start_project_container(
             db=db,
             project_id=project_id,
             user=current_user
@@ -405,7 +411,8 @@ async def get_project_container_status(
 ):
     """Get container status for a project."""
     try:
-        status_info = await ContainerService.get_project_container_status(
+        container_service = get_container_service()
+        status_info = await container_service.get_project_container_status(
             db=db,
             project_id=project_id,
             user=current_user

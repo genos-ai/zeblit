@@ -260,8 +260,8 @@ class ZeblitAPIClient:
     async def list_files(self, project_id: str, path: str = "/") -> List[Dict[str, Any]]:
         """List files in project."""
         params = {"path": path}
-        response = await self._request("GET", f"/projects/{project_id}/files", params=params)
-        return response.get("data", [])
+        response = await self._request("GET", f"/projects/{project_id}/files/", params=params)  # Added trailing slash
+        return response  # API returns data directly
     
     async def get_file_tree(self, project_id: str) -> Dict[str, Any]:
         """Get complete file tree."""

@@ -90,15 +90,14 @@ async def list_files(
     file_service = FileService(db)
     
     try:
-        files = await file_service.list_files(
+        files, total = await file_service.list_files(
             project_id=project_id,
             user=current_user,
-            directory=directory,
+            path_filter=directory,
             include_deleted=include_deleted,
             file_type=file_type,
-            search_term=search,
-            skip=skip,
-            limit=limit
+            limit=limit,
+            offset=skip
         )
         return [FileResponse.model_validate(f) for f in files]
     except Exception as e:

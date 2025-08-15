@@ -565,7 +565,7 @@ class FileOperations:
         """Verify user has access to project."""
         project = await self.project_repo.get(project_id)
         if not project:
-            raise NotFoundError(f"Project not found: {project_id}")
+            raise NotFoundError("Project", project_id)
         
         # Basic access check - in real implementation, integrate with proper permission system
         if project.owner_id != user_id:

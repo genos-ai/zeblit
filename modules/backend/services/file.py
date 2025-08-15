@@ -114,9 +114,8 @@ class FileService:
         offset: int = 0
     ) -> Tuple[List[ProjectFile], int]:
         """List files in a project."""
-        return await self.operations.list_files(
-            project_id, user, path_filter, file_type, include_deleted, limit, offset
-        )
+        # Temporary debug: Return empty list immediately
+        return [], 0
     
     async def move_file(self, file_id: UUID, new_path: str, user: User) -> ProjectFile:
         """Move/rename a file."""

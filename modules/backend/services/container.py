@@ -418,7 +418,7 @@ class ContainerService:
             # Verify project access
             project = await db.get(Project, project_id)
             if not project or project.owner_id != user.id:
-                raise NotFoundError("Project not found")
+                raise NotFoundError("Project", project_id)
             
             # Get active container
             result = await db.execute(
