@@ -45,24 +45,59 @@ class AnthropicProvider(LLMProvider):
     
     # Model configurations with pricing (per 1M tokens)
     MODEL_CONFIG = {
+        # Claude 4 Family
+        "claude-opus-4-1-20250805": {
+            "max_tokens": 8192,
+            "input_price": 20.00,   # Estimated pricing for Claude 4
+            "output_price": 100.00,
+        },
+        "claude-opus-4-20250514": {
+            "max_tokens": 8192,
+            "input_price": 18.00,   # Estimated pricing for Claude 4
+            "output_price": 90.00,
+        },
+        "claude-sonnet-4-20250514": {
+            "max_tokens": 8192,
+            "input_price": 5.00,    # Estimated pricing for Claude 4
+            "output_price": 25.00,
+        },
+        # Claude 3.7
+        "claude-3-7-sonnet-20250219": {
+            "max_tokens": 8192,
+            "input_price": 4.00,
+            "output_price": 20.00,
+        },
+        # Claude 3.5
+        "claude-3-5-sonnet-20241022": {
+            "max_tokens": 8192,
+            "input_price": 3.00,
+            "output_price": 15.00,
+        },
+        "claude-3-5-haiku-20241022": {
+            "max_tokens": 8192,
+            "input_price": 1.00,
+            "output_price": 5.00,
+        },
+        "claude-3-5-sonnet-20240620": {
+            "max_tokens": 8192,
+            "input_price": 3.00,
+            "output_price": 15.00,
+        },
+        # Claude 3 Legacy
         "claude-3-opus-20240229": {
             "max_tokens": 4096,
-            "input_price": 15.00,   # $15 per 1M input tokens
-            "output_price": 75.00,  # $75 per 1M output tokens
-        },
-        "claude-3-sonnet-20240229": {
-            "max_tokens": 4096,
-            "input_price": 3.00,    # $3 per 1M input tokens
-            "output_price": 15.00,  # $15 per 1M output tokens
+            "input_price": 15.00,
+            "output_price": 75.00,
         },
         "claude-3-haiku-20240307": {
             "max_tokens": 4096,
-            "input_price": 0.25,    # $0.25 per 1M input tokens
-            "output_price": 1.25,   # $1.25 per 1M output tokens
+            "input_price": 0.25,
+            "output_price": 1.25,
         },
-        # Aliases for convenience
+        # Aliases for convenience (point to latest Claude 4)
+        "claude-4-opus": "claude-opus-4-1-20250805",
+        "claude-4-sonnet": "claude-sonnet-4-20250514",
         "claude-3-opus": "claude-3-opus-20240229",
-        "claude-3-sonnet": "claude-3-sonnet-20240229",
         "claude-3-haiku": "claude-3-haiku-20240307",
     }
     
@@ -93,7 +128,9 @@ class AnthropicProvider(LLMProvider):
     
     def _resolve_model(self, model: str) -> str:
         """Resolve model aliases to full model names."""
-        return self.MODEL_CONFIG.get(model, model)
+        if model in self.MODEL_CONFIG:
+            return model
+        return model
     
     def _convert_messages(self, messages: List[LLMMessage]) -> tuple[Optional[str], List[Dict[str, str]]]:
         """

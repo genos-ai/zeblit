@@ -265,7 +265,7 @@ class Settings(BaseSettings):
     
     class Config:
         """Pydantic config."""
-        env_file = str(find_project_root() / ".env")
+        env_file = str(find_project_root() / "config" / ".env")
         case_sensitive = True
         extra = "ignore"
 

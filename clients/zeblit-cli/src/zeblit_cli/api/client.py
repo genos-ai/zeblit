@@ -216,13 +216,13 @@ class ZeblitAPIClient:
         if target_agent:
             data["target_agent"] = target_agent
         
-        response = await self._request("POST", f"/projects/{project_id}/chat", data)
+        response = await self._request("POST", f"/agents/projects/{project_id}/chat", data)
         return response
     
     async def get_chat_history(self, project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get chat history for a project."""
         params = {"limit": limit}
-        response = await self._request("GET", f"/projects/{project_id}/chat/history", params=params)
+        response = await self._request("GET", f"/agents/projects/{project_id}/chat/history", params=params)
         return response.get("data", [])
     
     # Container management
