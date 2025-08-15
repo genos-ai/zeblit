@@ -107,7 +107,7 @@ async def create_default_users(session: AsyncSession):
 
 
 async def create_ai_agents(session: AsyncSession):
-    """Create the 6 AI agents with proper configurations."""
+    """Create the 7 AI agents with proper configurations."""
     
     agents_data = [
         {
@@ -278,6 +278,62 @@ Focus on automation, reliability, and operational excellence. Ensure the platfor
             "can_create_subtasks": True,
             "can_modify_files": True,
             "performance_metrics": {"avg_response_time": 1.6, "success_rate": 0.98},
+        },
+        {
+            "agent_type": AgentType.SECURITY_ENGINEER,
+            "name": "Security Engineer",
+            "display_name": "Security Engineer",
+            "description": "Focuses on application security, vulnerability assessment, compliance, and ensuring the platform is secure",
+            "version": "1.0.0",
+            "system_prompt": """You are the Security Engineer for an AI development platform. Your role is to:
+
+1. Conduct security assessments and vulnerability analysis
+2. Implement security controls and hardening measures
+3. Perform security code reviews and threat modeling
+4. Ensure compliance with security standards (OWASP, NIST, etc.)
+5. Design secure architectures and authentication systems
+6. Monitor for security incidents and respond appropriately
+7. Create security policies and procedures
+8. Provide security training and guidance to development teams
+
+Focus on prevention, defense-in-depth, and building security into every aspect of the platform.""",
+            "capabilities": ["security_assessment", "vulnerability_scanning", "compliance", "threat_modeling", "secure_architecture"],
+            "default_model": "claude-sonnet-4",
+            "fallback_models": ["gpt-4", "gemini-pro"],
+            "provider": "anthropic",
+            "temperature": 0.1,  # Lower temperature for more precise security analysis
+            "max_tokens": 4000,
+            "top_p": 1.0,
+            "frequency_penalty": 0.0,
+            "presence_penalty": 0.0,
+            "max_retries": 3,
+            "timeout_seconds": 120,
+            "parallel_task_limit": 3,  # Security reviews should be more focused
+            "requires_approval": False,
+            "can_create_subtasks": True,
+            "can_modify_files": False,  # Security engineer reviews and recommends, doesn't directly modify
+            "can_execute_code": False,  # Security review only, no code execution
+            "is_active": True,
+            "is_available": True,
+            "current_load": 0,
+            "max_concurrent_tasks": 5,  # Lower concurrent load for thorough security reviews
+            "total_tasks_completed": 0,
+            "total_tasks_failed": 0,
+            "success_rate_percentage": 100.0,
+            "total_tokens_used": 0,
+            "total_cost_usd": 0.0,
+            "specializations": ["owasp", "nist", "security_testing", "compliance", "threat_modeling", "secure_coding"],
+            "tools_available": ["security_scanners", "compliance_checkers", "threat_modeling_tools", "audit_tools"],
+            "file_types_handled": [".py", ".js", ".ts", ".java", ".php", ".rb", ".go", ".rs", ".yaml", ".json", ".config"],
+            "communication_style": "professional",
+            "explanation_level": "detailed",
+            "code_commenting_style": "comprehensive",
+            "context_window_size": 200000,
+            "memory_enabled": True,
+            "learning_enabled": True,
+            "tags": ["security", "compliance", "vulnerability_assessment"],
+            "agent_metadata": {"avg_response_time": 2.0, "success_rate": 0.97},
+            "feedback_count": 0,
         }
     ]
     

@@ -16,6 +16,7 @@ from modules.backend.agents.data_analyst import DataAnalystAgent
 from modules.backend.agents.engineer import EngineerAgent
 from modules.backend.agents.architect import ArchitectAgent
 from modules.backend.agents.platform_engineer import PlatformEngineerAgent
+from modules.backend.agents.security_engineer import SecurityEngineerAgent
 
 from modules.backend.core.llm import LLMProvider
 from modules.backend.models.agent import Agent as AgentModel, AgentType
@@ -35,6 +36,7 @@ class AgentFactory:
         AgentType.ENGINEER: EngineerAgent,
         AgentType.ARCHITECT: ArchitectAgent,
         AgentType.PLATFORM_ENGINEER: PlatformEngineerAgent,
+        AgentType.SECURITY_ENGINEER: SecurityEngineerAgent,
     }
     
     @classmethod

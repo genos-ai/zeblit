@@ -12,6 +12,7 @@ from modules.backend.agents.data_analyst import DataAnalystAgent
 from modules.backend.agents.engineer import EngineerAgent
 from modules.backend.agents.architect import ArchitectAgent
 from modules.backend.agents.platform_engineer import PlatformEngineerAgent
+from modules.backend.agents.security_engineer import SecurityEngineerAgent
 from modules.backend.agents.factory import AgentFactory
 
 __all__ = [
@@ -24,5 +25,6 @@ __all__ = [
     "EngineerAgent",
     "ArchitectAgent",
     "PlatformEngineerAgent",
+    "SecurityEngineerAgent",
     "AgentFactory",
 ] 
