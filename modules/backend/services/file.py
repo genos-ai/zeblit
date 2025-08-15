@@ -61,9 +61,32 @@ class FileService:
             project_id, file_path, content, user, encoding, metadata
         )
     
-    async def read_file(self, file_id: UUID, user: User) -> ProjectFile:
-        """Read a file by ID."""
-        return await self.operations.read_file(file_id, user)
+    async def read_file(
+        self, 
+        project_id: UUID = None, 
+        file_path: str = None, 
+        user: User = None, 
+        version: Optional[int] = None,
+        file_id: UUID = None
+    ) -> ProjectFile:
+        """
+        Read a file by project_id + file_path or by file_id.
+        
+        Args:
+            project_id: Project ID (required if file_id not provided)
+            file_path: File path within project (required if file_id not provided)
+            user: User requesting the file
+            version: Specific version to read (optional)
+            file_id: Direct file ID (alternative to project_id + file_path)
+        """
+        if file_id:
+            # Legacy method: read by file ID
+            return await self.operations.read_file(file_id, user)
+        elif project_id and file_path:
+            # New method: read by project + path
+            return await self.operations.read_file_by_path(project_id, file_path, user, version)
+        else:
+            raise ValueError("Must provide either file_id or (project_id + file_path)")
     
     async def update_file(
         self,

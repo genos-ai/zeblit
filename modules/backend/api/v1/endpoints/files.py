@@ -105,6 +105,32 @@ async def list_files(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/workspace")
+async def get_workspace_files(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_multi_auth)
+):
+    """
+    Get complete file tree from container workspace.
+    
+    Returns the current state of files in the container workspace,
+    which may be more up-to-date than database records.
+    """
+    file_service = FileService(db)
+    
+    try:
+        workspace_data = await file_service.get_workspace_files(
+            project_id=project_id,
+            user=current_user
+        )
+        
+        return workspace_data
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/{file_path:path}", response_model=FileResponse)
 async def read_file(
     project_id: UUID,
@@ -424,27 +450,4 @@ async def download_file_raw(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.get("/workspace")
-async def get_workspace_files(
-    project_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_multi_auth)
-):
-    """
-    Get complete file tree from container workspace.
-    
-    Returns the current state of files in the container workspace,
-    which may be more up-to-date than database records.
-    """
-    file_service = FileService(db)
-    
-    try:
-        workspace_data = await file_service.get_workspace_files(
-            project_id=project_id,
-            user=current_user
-        )
-        
-        return workspace_data
-        
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) 
+# Workspace endpoint moved above catch-all route 

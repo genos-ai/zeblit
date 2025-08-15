@@ -222,11 +222,9 @@ class FileUploadDownload:
                 'file_type': file.file_type,
                 'file_size': file.file_size,
                 'is_binary': file.is_binary,
-                'mime_type': file.mime_type,
                 'last_modified': (file.updated_at or file.created_at).isoformat(),
                 'created_by': str(file.created_by) if file.created_by else None,
-                'content_hash': file.content_hash,
-                'metadata': file.file_metadata or {}
+                'content_hash': file.content_hash
             })
         
         return workspace_files

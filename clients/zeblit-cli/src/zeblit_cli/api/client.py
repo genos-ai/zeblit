@@ -266,7 +266,7 @@ class ZeblitAPIClient:
     async def get_file_tree(self, project_id: str) -> Dict[str, Any]:
         """Get complete file tree."""
         response = await self._request("GET", f"/projects/{project_id}/files/workspace")
-        return response.get("data", {})
+        return response  # API returns data directly
     
     async def upload_file(self, project_id: str, local_path: str, remote_path: str) -> Dict[str, Any]:
         """Upload file to project."""

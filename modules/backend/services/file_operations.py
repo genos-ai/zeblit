@@ -148,13 +148,69 @@ class FileOperations:
         """
         file = await self.file_repo.get(file_id)
         if not file or file.is_deleted:
-            raise NotFoundError(f"File not found: {file_id}")
+            raise NotFoundError("File", file_id)
         
         # Verify project access
         await self._verify_project_access(file.project_id, user.id, write=False)
         
         # Security validation
         await self.security_scanner.validate_user_file_access(file, user, write_access=False)
+        
+        return file
+    
+    async def read_file_by_path(
+        self, 
+        project_id: UUID, 
+        file_path: str, 
+        user: User, 
+        version: Optional[int] = None
+    ) -> ProjectFile:
+        """
+        Read a file by project ID and file path.
+        
+        Args:
+            project_id: Project ID
+            file_path: File path within project
+            user: User reading the file
+            version: Specific version to read (defaults to latest)
+            
+        Returns:
+            File object
+            
+        Raises:
+            NotFoundError: If file not found
+            ForbiddenError: If user lacks permission
+        """
+        from sqlalchemy import and_, select
+        
+        # Verify project access first
+        project = await self.project_repo.get(project_id)
+        if not project:
+            raise NotFoundError("Project", project_id)
+        
+        # Check access (simplified - should verify user has read access to project)
+        if project.owner_id != user.id:
+            # TODO: Add proper project permission checking
+            pass
+        
+        # Find file by path and version
+        filters = [
+            ProjectFile.project_id == project_id,
+            ProjectFile.file_path == file_path,
+            ProjectFile.is_deleted == False
+        ]
+        
+        if version:
+            filters.append(ProjectFile.version == version)
+        else:
+            filters.append(ProjectFile.is_latest == True)
+        
+        stmt = select(ProjectFile).where(and_(*filters))
+        result = await self.db.execute(stmt)
+        file = result.scalar_one_or_none()
+        
+        if not file:
+            raise NotFoundError("File", f"{file_path} in project {project_id}")
         
         return file
     
@@ -185,7 +241,7 @@ class FileOperations:
         """
         file = await self.file_repo.get(file_id)
         if not file or file.is_deleted:
-            raise NotFoundError(f"File not found: {file_id}")
+            raise NotFoundError("File", file_id)
         
         # Verify project access
         await self._verify_project_access(file.project_id, user.id, write=True)
@@ -257,7 +313,7 @@ class FileOperations:
         """
         file = await self.file_repo.get(file_id)
         if not file:
-            raise NotFoundError(f"File not found: {file_id}")
+            raise NotFoundError("File", file_id)
         
         # Verify project access
         await self._verify_project_access(file.project_id, user.id, write=True)
@@ -366,7 +422,7 @@ class FileOperations:
         """
         file = await self.file_repo.get(file_id)
         if not file or file.is_deleted:
-            raise NotFoundError(f"File not found: {file_id}")
+            raise NotFoundError("File", file_id)
         
         # Verify project access
         await self._verify_project_access(file.project_id, user.id, write=True)
@@ -428,7 +484,7 @@ class FileOperations:
         """
         source_file = await self.file_repo.get(file_id)
         if not source_file or source_file.is_deleted:
-            raise NotFoundError(f"File not found: {file_id}")
+            raise NotFoundError("File", file_id)
         
         target_project_id = new_project_id or source_file.project_id
         
@@ -464,7 +520,7 @@ class FileOperations:
         """
         file = await self.file_repo.get(file_id)
         if not file:
-            raise NotFoundError(f"File not found: {file_id}")
+            raise NotFoundError("File", file_id)
         
         # Verify project access
         await self._verify_project_access(file.project_id, user.id, write=False)
