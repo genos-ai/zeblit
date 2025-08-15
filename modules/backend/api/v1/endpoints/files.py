@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.core.database import get_db
-from modules.backend.core.dependencies import get_current_user
+from modules.backend.core.dependencies import get_current_user_multi_auth
 from modules.backend.models.user import User
 from modules.backend.services.file import FileService
 from modules.backend.schemas.file import (
@@ -34,7 +34,7 @@ async def create_file(
     project_id: UUID,
     file_data: FileCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileResponse:
     """Create a new file in the project."""
     file_service = FileService(db)
@@ -58,7 +58,7 @@ async def get_file_tree(
     project_id: UUID,
     include_metadata: bool = Query(False, description="Include file metadata"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileTreeResponse:
     """Get hierarchical file tree for the project."""
     file_service = FileService(db)
@@ -84,7 +84,7 @@ async def list_files(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> List[FileResponse]:
     """List files in the project."""
     file_service = FileService(db)
@@ -111,7 +111,7 @@ async def read_file(
     file_path: str,
     version: Optional[int] = Query(None, description="Specific version to read"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileResponse:
     """Read a file's content and metadata."""
     file_service = FileService(db)
@@ -135,7 +135,7 @@ async def update_file(
     file_data: FileUpdate,
     create_version: bool = Query(True, description="Create new version"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileResponse:
     """Update a file's content."""
     file_service = FileService(db)
@@ -159,7 +159,7 @@ async def delete_file(
     file_path: str,
     hard_delete: bool = Query(False, description="Permanently delete"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> Dict[str, bool]:
     """Delete a file from the project."""
     file_service = FileService(db)
@@ -181,7 +181,7 @@ async def get_file_versions(
     project_id: UUID,
     file_path: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> List[FileVersionResponse]:
     """Get all versions of a file."""
     file_service = FileService(db)
@@ -203,7 +203,7 @@ async def restore_file_version(
     file_path: str,
     version: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileResponse:
     """Restore a specific version of a file."""
     file_service = FileService(db)
@@ -225,7 +225,7 @@ async def move_file(
     project_id: UUID,
     move_data: FileMoveRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileResponse:
     """Move or rename a file."""
     file_service = FileService(db)
@@ -247,7 +247,7 @@ async def copy_file(
     project_id: UUID,
     copy_data: FileCopyRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileResponse:
     """Copy a file to a new location."""
     file_service = FileService(db)
@@ -269,7 +269,7 @@ async def analyze_file(
     project_id: UUID,
     file_path: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileAnalysisResponse:
     """Analyze a file for code quality, complexity, etc."""
     file_service = FileService(db)
@@ -289,7 +289,7 @@ async def analyze_file(
 async def sync_container_files(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> FileSyncResponse:
     """Sync files between database and container."""
     file_service = FileService(db)
@@ -310,7 +310,7 @@ async def download_file(
     project_id: UUID,
     file_path: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> Response:
     """Download raw file content."""
     file_service = FileService(db)
@@ -353,7 +353,7 @@ async def upload_file(
     content: bytes = Body(..., description="File content as bytes"),
     content_type: Optional[str] = Body(None, description="Optional MIME type"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     Upload a file (binary or text) to the project.
@@ -391,7 +391,7 @@ async def download_file_raw(
     project_id: UUID,
     file_path: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ) -> Response:
     """
     Download raw file content (binary or text).
@@ -428,7 +428,7 @@ async def download_file_raw(
 async def get_workspace_files(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     Get complete file tree from container workspace.

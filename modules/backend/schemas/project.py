@@ -70,14 +70,30 @@ class ProjectResponse(ProjectBase):
     id: UUID = Field(..., description="Project ID")
     owner_id: UUID = Field(..., description="Owner user ID")
     status: str = Field(..., description="Project status")
-    container_id: Optional[str] = Field(None, description="Container ID")
-    git_repo_url: Optional[str] = Field(None, description="Git repository URL")
-    preview_url: Optional[str] = Field(None, description="Preview URL")
-    default_branch: str = Field(default="main", description="Default Git branch")
+    repository_url: Optional[str] = Field(None, description="Git repository URL")
+    branch: str = Field(default="main", description="Git branch")
+    template_type: Optional[str] = Field(None, description="Template used for project creation")
+    environment_variables: Dict[str, Any] = Field(default_factory=dict, description="Environment variables")
     is_archived: bool = Field(default=False, description="Whether the project is archived")
+    
+    # Resource limits
+    max_containers: int = Field(default=5, description="Maximum containers allowed")
+    max_storage_mb: int = Field(default=10240, description="Maximum storage in MB")
+    max_compute_hours: int = Field(default=100, description="Maximum compute hours")
+    
+    # Usage tracking
+    current_containers: int = Field(default=0, description="Current containers count")
+    current_storage_mb: int = Field(default=0, description="Current storage usage in MB")
+    current_compute_hours: int = Field(default=0, description="Current compute hours used")
+    
+    # Metadata
+    tags: List[str] = Field(default_factory=list, description="Project tags")
+    readme_content: Optional[str] = Field(None, description="Project README content")
+    
+    # Timestamps
     created_at: datetime = Field(..., description="Creation timestamp")
-    updated_at: datetime = Field(..., description="Last update timestamp")
-    last_accessed: Optional[datetime] = Field(None, description="Last access timestamp")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    last_activity_at: datetime = Field(..., description="Last activity timestamp")
     
     model_config = ConfigDict(
         from_attributes=True,
@@ -95,13 +111,22 @@ class ProjectResponse(ProjectBase):
                     "tailwind": True
                 },
                 "status": "active",
-                "container_id": "container_abc123",
-                "preview_url": "https://preview.example.com/project123",
-                "default_branch": "main",
+                "repository_url": "https://github.com/user/my-awesome-app",
+                "branch": "main",
+                "template_type": "react-typescript",
+                "environment_variables": {"NODE_ENV": "development"},
                 "is_archived": False,
+                "max_containers": 5,
+                "max_storage_mb": 10240,
+                "max_compute_hours": 100,
+                "current_containers": 1,
+                "current_storage_mb": 512,
+                "current_compute_hours": 2,
+                "tags": ["react", "typescript"],
+                "readme_content": "# My Awesome App\n\nA React-based web application",
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z",
-                "last_accessed": "2024-01-10T10:00:00Z"
+                "last_activity_at": "2024-01-10T10:00:00Z"
             }
         }
     )

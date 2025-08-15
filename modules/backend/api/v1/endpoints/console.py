@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.core.database import get_db
-from modules.backend.core.dependencies import get_current_user
+from modules.backend.core.dependencies import get_current_user_multi_auth
 from modules.backend.models.user import User
 from modules.backend.schemas.user import UserResponse
 from modules.backend.schemas.websocket import ConsoleLogPayload, ErrorLogPayload
@@ -35,7 +35,7 @@ async def get_project_console_logs(
     project_id: UUID,
     count: int = Query(100, ge=1, le=1000, description="Number of logs to retrieve"),
     level: Optional[str] = Query(None, description="Filter by log level"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ) -> List[Dict[str, Any]]:
     """
@@ -71,7 +71,7 @@ async def get_project_console_logs(
 async def get_project_errors(
     project_id: UUID,
     count: int = Query(50, ge=1, le=100, description="Number of errors to retrieve"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ) -> List[Dict[str, Any]]:
     """
@@ -104,7 +104,7 @@ async def get_project_errors(
 @router.get("/projects/{project_id}/stats")
 async def get_project_console_stats(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, int]:
     """
@@ -133,7 +133,7 @@ async def get_project_console_stats(
 @router.get("/projects/{project_id}/context")
 async def get_project_console_context(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, Any]:
     """
@@ -162,7 +162,7 @@ async def get_project_console_context(
 @router.delete("/projects/{project_id}/logs")
 async def clear_project_logs(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, str]:
     """
@@ -198,7 +198,7 @@ async def clear_project_logs(
 async def store_console_log(
     project_id: UUID,
     log_data: ConsoleLogPayload,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, str]:
     """
@@ -233,7 +233,7 @@ async def store_console_log(
 async def store_error_log(
     project_id: UUID,
     error_data: ErrorLogPayload,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ) -> Dict[str, str]:
     """

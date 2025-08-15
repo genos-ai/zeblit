@@ -14,7 +14,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from modules.backend.core.dependencies import get_db, get_current_user
+from modules.backend.core.dependencies import get_db, get_current_user_multi_auth
 from modules.backend.models.user import User
 from modules.backend.services.project import ProjectService
 from modules.backend.schemas.project import (
@@ -43,7 +43,7 @@ async def list_projects(
     include_archived: bool = Query(False, description="Include archived projects"),
     search: Optional[str] = Query(None, description="Search projects by name"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> ProjectListResponse:
     """
     List all projects for the current user.
@@ -90,7 +90,7 @@ async def list_projects(
 async def create_project(
     project_data: ProjectCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> ProjectResponse:
     """
     Create a new project.
@@ -137,7 +137,7 @@ async def create_project(
 @router.get("/templates", response_model=List[ProjectTemplateResponse])
 async def list_templates(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> List[ProjectTemplateResponse]:
     """
     List available project templates.
@@ -163,7 +163,7 @@ async def list_templates(
 async def get_project(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> ProjectResponse:
     """
     Get a specific project by ID.
@@ -207,7 +207,7 @@ async def update_project(
     project_id: UUID,
     project_data: ProjectUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> ProjectResponse:
     """
     Update a project.
@@ -257,7 +257,7 @@ async def update_project(
 async def delete_project(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> None:
     """
     Delete a project.
@@ -298,7 +298,7 @@ async def delete_project(
 async def archive_project(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> ProjectResponse:
     """
     Archive a project.
@@ -341,7 +341,7 @@ async def archive_project(
 async def unarchive_project(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> ProjectResponse:
     """
     Unarchive a project.
@@ -385,7 +385,7 @@ async def add_collaborator(
     project_id: UUID,
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> ProjectResponse:
     """
     Add a collaborator to a project.

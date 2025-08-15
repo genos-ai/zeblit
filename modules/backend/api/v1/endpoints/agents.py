@@ -14,7 +14,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from modules.backend.core.dependencies import get_db, get_current_user
+from modules.backend.core.dependencies import get_db, get_current_user_multi_auth
 from modules.backend.models.user import User
 from modules.backend.services.agent import AgentService
 from modules.backend.services.agent_orchestrator import get_agent_orchestrator
@@ -40,7 +40,7 @@ async def list_agents(
     limit: int = Query(20, ge=1, le=100, description="Number of items to return"),
     agent_type: Optional[str] = Query(None, description="Filter by agent type"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> AgentListResponse:
     """
     List all available AI agents.
@@ -81,7 +81,7 @@ async def list_agents(
 async def get_agent(
     agent_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> AgentResponse:
     """
     Get a specific agent by ID.
@@ -113,7 +113,7 @@ async def get_agent(
 async def get_agent_by_type(
     agent_type: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> AgentResponse:
     """
     Get an agent by its type.
@@ -145,7 +145,7 @@ async def get_agent_by_type(
 async def get_agent_status(
     agent_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> dict:
     """
     Get the current status of an agent.
@@ -178,7 +178,7 @@ async def update_agent_status(
     agent_id: UUID,
     status_update: AgentStatusUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> dict:
     """
     Update the status of an agent.
@@ -219,7 +219,7 @@ async def get_agent_metrics(
     agent_id: UUID,
     days: int = Query(30, ge=1, le=365, description="Number of days to look back"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> dict:
     """
     Get performance metrics for an agent.
@@ -258,7 +258,7 @@ async def chat_with_agent(
     project_id: UUID,
     chat_request: AgentChatRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ) -> AgentChatResponse:
     """
     Chat with project agents - primary interface for user interactions.
@@ -302,7 +302,7 @@ async def get_chat_history(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ):
     """Get chat history for a project."""
     # TODO: Implement conversation history retrieval
@@ -315,7 +315,7 @@ async def direct_agent_message(
     agent_type: str,
     chat_request: AgentChatRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ):
     """
     Send a message directly to a specific agent type.
@@ -366,7 +366,7 @@ async def direct_agent_message(
 async def get_project_agents_status(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
 ):
     """
     Get status of all agents for a project.

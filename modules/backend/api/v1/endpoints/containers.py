@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.core.database import get_db
-from modules.backend.core.dependencies import get_current_user
+from modules.backend.core.dependencies import get_current_user_multi_auth
 from modules.backend.models.user import User
 from modules.backend.schemas.container import (
     ContainerCreate,
@@ -48,7 +48,7 @@ router = APIRouter(
 async def create_container(
     project_id: UUID,
     container_data: ContainerCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -90,7 +90,7 @@ async def create_container(
 @router.get("/projects/{project_id}/container", response_model=Optional[ContainerRead])
 async def get_project_container(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -122,7 +122,7 @@ async def get_project_container(
 @router.post("/{container_id}/start", response_model=ContainerRead)
 async def start_container(
     container_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Start a stopped or sleeping container."""
@@ -146,7 +146,7 @@ async def start_container(
 @router.post("/{container_id}/stop", response_model=ContainerRead)
 async def stop_container(
     container_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Stop a running container."""
@@ -170,7 +170,7 @@ async def stop_container(
 @router.post("/{container_id}/restart", response_model=ContainerRead)
 async def restart_container(
     container_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Restart a container."""
@@ -195,7 +195,7 @@ async def restart_container(
 async def delete_container(
     container_id: UUID,
     force: bool = Query(False, description="Force delete even if running"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Delete a container."""
@@ -226,7 +226,7 @@ async def delete_container(
 @router.get("/{container_id}/stats", response_model=ContainerStats)
 async def get_container_stats(
     container_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Get container resource usage statistics."""
@@ -251,7 +251,7 @@ async def get_container_stats(
 async def get_container_logs(
     container_id: UUID,
     tail: int = Query(100, ge=1, le=1000, description="Number of lines to return"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Get container logs."""
@@ -277,7 +277,7 @@ async def get_container_logs(
 async def execute_command(
     container_id: UUID,
     command: ContainerCommand,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -312,7 +312,7 @@ async def execute_command(
 @router.get("/{container_id}/health", response_model=ContainerHealth)
 async def check_container_health(
     container_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Check container health status."""
@@ -352,7 +352,7 @@ async def check_container_health(
 @router.post("/projects/{project_id}/container/start")
 async def start_project_container(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Start or create container for a project."""
@@ -376,7 +376,7 @@ async def start_project_container(
 @router.post("/projects/{project_id}/container/stop")
 async def stop_project_container(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Stop container for a project."""
@@ -400,7 +400,7 @@ async def stop_project_container(
 @router.get("/projects/{project_id}/container/status")
 async def get_project_container_status(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Get container status for a project."""
@@ -425,7 +425,7 @@ async def get_project_container_status(
 async def execute_project_command(
     project_id: UUID,
     command: ContainerCommand,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Execute a command in project container."""
@@ -452,7 +452,7 @@ async def execute_project_command(
 async def get_project_container_logs(
     project_id: UUID,
     tail: int = Query(100, ge=1, le=1000),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Get logs from project container."""

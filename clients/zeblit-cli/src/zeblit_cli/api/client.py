@@ -186,7 +186,7 @@ class ZeblitAPIClient:
     async def list_projects(self) -> List[Dict[str, Any]]:
         """List user projects."""
         response = await self._request("GET", "/projects")
-        return response.get("data", [])
+        return response.get("items", [])
     
     async def create_project(self, name: str, description: str = None, template: str = None) -> Dict[str, Any]:
         """Create a new project."""
@@ -197,12 +197,12 @@ class ZeblitAPIClient:
             data["template"] = template
         
         response = await self._request("POST", "/projects", data)
-        return response.get("data", {})
+        return response  # API returns project directly
     
     async def get_project(self, project_id: str) -> Dict[str, Any]:
         """Get project details."""
         response = await self._request("GET", f"/projects/{project_id}")
-        return response.get("data", {})
+        return response  # API returns project directly
     
     async def delete_project(self, project_id: str) -> bool:
         """Delete a project."""
@@ -217,7 +217,7 @@ class ZeblitAPIClient:
             data["target_agent"] = target_agent
         
         response = await self._request("POST", f"/projects/{project_id}/chat", data)
-        return response.get("data", {})
+        return response
     
     async def get_chat_history(self, project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get chat history for a project."""
