@@ -110,14 +110,8 @@ class FileUploadDownload:
             'file_size': file_size,
             'is_binary': True,
             'encoding': 'base64',
-            'mime_type': content_type,
             'created_by': user.id,
-            'updated_by': user.id,
-            'file_metadata': {
-                **(metadata or {}),
-                'upload_timestamp': datetime.utcnow().isoformat(),
-                'original_size': file_size
-            }
+            'updated_by': user.id
         }
         
         project_file = await self.file_repo.create(**file_data)

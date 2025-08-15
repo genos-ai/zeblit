@@ -112,11 +112,64 @@ class ZeblitAPIClient:
                 'params': params
             }
             
+            # For file uploads, use separate client without content-type header
             if files:
-                request_kwargs['files'] = files
-                if data:
-                    request_kwargs['data'] = data
+                # Create a separate client without content-type for file uploads
+                api_key = await self.auth_manager.get_api_key()
+                headers = {}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                
+                file_client = httpx.AsyncClient(
+                    base_url=self.settings.api_base_url,
+                    headers=headers,
+                    timeout=30.0
+                )
+                
+                try:
+                    request_kwargs['files'] = files
+                    if data:
+                        request_kwargs['data'] = data
+                    
+                    # Use the file client for this request
+                    response = await file_client.request(**request_kwargs)
+                    
+                    # Handle response here and return early
+                    if response.status_code == 204:  # No content
+                        return {"success": True}
+                    
+                    try:
+                        response_data = response.json()
+                    except json.JSONDecodeError:
+                        if response.is_success:
+                            return {"success": True, "data": response.text}
+                        else:
+                            raise APIError(f"Invalid JSON response: {response.text}", response.status_code)
+                    
+                    # Check for API errors
+                    if not response.is_success:
+                        error_msg = "Request failed"
+                        details = {}
+                        
+                        if isinstance(response_data, dict):
+                            if "error" in response_data:
+                                error_info = response_data["error"]
+                                if isinstance(error_info, dict):
+                                    error_msg = error_info.get("message", error_msg)
+                                    details = error_info.get("details", {})
+                                else:
+                                    error_msg = str(error_info)
+                            elif "detail" in response_data:
+                                error_msg = str(response_data["detail"])
+                        
+                        raise APIError(error_msg, response.status_code, details)
+                    
+                    return response_data
+                finally:
+                    await file_client.aclose()
+                
             elif data:
+                # Regular request with JSON
                 request_kwargs['json'] = data
             
             # Make request

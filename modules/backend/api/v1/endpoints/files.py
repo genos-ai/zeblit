@@ -7,7 +7,7 @@ and file tree navigation.
 
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Response, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.core.database import get_db
@@ -374,37 +374,45 @@ async def download_file(
 @router.post("/upload")
 async def upload_file(
     project_id: UUID,
-    file_path: str = Body(..., description="File path relative to project root"),
-    content: bytes = Body(..., description="File content as bytes"),
-    content_type: Optional[str] = Body(None, description="Optional MIME type"),
+    file: UploadFile = File(..., description="File to upload"),
+    path: str = Form(..., description="File path relative to project root"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     Upload a file (binary or text) to the project.
     
-    This endpoint accepts raw file content and handles both binary and text files.
+    This endpoint accepts multipart form uploads and handles both binary and text files.
     Files are stored in the database and synced to containers automatically.
     """
     file_service = FileService(db)
     
     try:
-        file = await file_service.upload_file(
+        # Read file content
+        content = await file.read()
+        
+        # Use path from form data
+        file_path = path
+        
+        # Get content type from uploaded file
+        content_type = file.content_type
+        
+        uploaded_file = await file_service.upload_file(
             project_id=project_id,
             file_path=file_path,
-            content=content,
+            file_content=content,
             user=current_user,
             content_type=content_type
         )
         
         return {
             "success": True,
-            "file_id": str(file.id),
-            "file_path": file.file_path,
-            "size_bytes": file.size_bytes,
-            "is_binary": file.is_binary,
-            "mime_type": file.mime_type,
-            "uploaded_at": file.updated_at.isoformat()
+            "file_id": str(uploaded_file.id),
+            "file_path": uploaded_file.file_path,
+            "size_bytes": uploaded_file.file_size,
+            "is_binary": uploaded_file.is_binary,
+            "file_type": uploaded_file.file_type,
+            "uploaded_at": uploaded_file.updated_at.isoformat()
         }
         
     except Exception as e:
