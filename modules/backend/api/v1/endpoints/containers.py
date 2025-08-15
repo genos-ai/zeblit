@@ -26,7 +26,8 @@ from modules.backend.schemas.container import (
     ContainerLogs,
     ContainerCommand,
     ContainerCommandResult,
-    ContainerHealth
+    ContainerHealth,
+    EncodedContainerCommand
 )
 from modules.backend.services.container import ContainerService
 from modules.backend.core.exceptions import (
@@ -468,6 +469,33 @@ async def execute_project_command(
         raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to execute project command: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to execute command"
+        )
+
+
+@router.post("/projects/{project_id}/container/execute-encoded")
+async def execute_encoded_project_command(
+    project_id: UUID,
+    command: EncodedContainerCommand,
+    current_user: User = Depends(get_current_user_multi_auth),
+    db: AsyncSession = Depends(get_db)
+):
+    """Execute an encoded command in project container."""
+    try:
+        container_service = get_container_service()
+        result = await container_service.execute_encoded_project_command(
+            db=db,
+            project_id=project_id,
+            user=current_user,
+            encoded_command=command.encoded_command
+        )
+        return result
+    except (NotFoundError, ValidationError, ForbiddenError) as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to execute encoded project command: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to execute command"

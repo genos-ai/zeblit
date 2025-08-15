@@ -151,8 +151,10 @@ def run_command(command: tuple, working_dir: Optional[str], project: Optional[st
 
 
 async def run_command_cmd(command: list, working_dir: Optional[str], project_id: Optional[str]):
-    """Run command implementation."""
+    """Run command implementation with robust character handling."""
     try:
+        from zeblit_cli.utils.command_encoder import CommandEncoder
+        
         auth_manager = get_auth_manager()
         settings = get_settings()
         
@@ -164,12 +166,26 @@ async def run_command_cmd(command: list, working_dir: Optional[str], project_id:
                 console.print("[red]No project specified[/red]")
                 return
         
+        # Convert command list back to string for encoding
+        command_str = " ".join(command)
+        
+        # Encode command for safe transport
+        encoded_command = CommandEncoder.encode_command(
+            command=command_str,
+            workdir=working_dir
+        )
+        
         async with ZeblitAPIClient(auth_manager) as api_client:
             auth_manager.set_api_client(api_client)
             
-            console.print(f"⚡ Executing: [bold]{' '.join(command)}[/bold]")
+            console.print(f"⚡ Executing: [bold]{command_str}[/bold]")
             
-            result = await api_client.execute_command(project_id, command, working_dir)
+            # Try encoded command first, fallback to legacy
+            try:
+                result = await api_client.execute_encoded_command(project_id, encoded_command)
+            except Exception:
+                # Fallback to legacy method for backwards compatibility
+                result = await api_client.execute_command(project_id, command, working_dir)
             
             # Display output
             output = result.get("output", "")

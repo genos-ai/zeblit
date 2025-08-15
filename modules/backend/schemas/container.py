@@ -144,6 +144,26 @@ class ContainerCommandResult(BaseModel):
     model_config = {"protected_namespaces": ()}
 
 
+class EncodedContainerCommand(BaseModel):
+    """Enhanced container command with encoding support."""
+    encoded_command: str = Field(..., description="Base64 encoded command specification")
+    
+    @field_validator('encoded_command')
+    @classmethod
+    def validate_encoded_command(cls, v: str) -> str:
+        """Validate that the encoded command can be decoded."""
+        try:
+            import base64
+            import json
+            decoded = base64.b64decode(v.encode('ascii')).decode('utf-8')
+            json.loads(decoded)
+            return v
+        except Exception:
+            raise ValueError("Invalid encoded command format")
+    
+    model_config = {"protected_namespaces": ()}
+
+
 class ContainerList(BaseModel):
     """List of containers."""
     containers: List[ContainerRead]

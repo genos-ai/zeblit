@@ -139,9 +139,9 @@ def use(ctx, project_id: str):
 @click.pass_context
 def run(ctx, command: tuple, working_dir: Optional[str]):
     """Execute command in project container (alias for 'container run')."""
-    command_str = " ".join(command)
+    command_list = list(command)
     from zeblit_cli.commands.container import run_command_cmd
-    asyncio.run(run_command_cmd(command_str, working_dir))
+    asyncio.run(run_command_cmd(command_list, working_dir, None))
 
 
 @cli.command()

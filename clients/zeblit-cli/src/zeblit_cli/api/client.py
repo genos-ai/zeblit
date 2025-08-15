@@ -242,13 +242,20 @@ class ZeblitAPIClient:
         return response.get("data", {})
     
     async def execute_command(self, project_id: str, command: list, working_dir: str = None) -> Dict[str, Any]:
-        """Execute command in project container."""
+        """Execute command in project container (legacy method)."""
         data = {"command": command}
         if working_dir:
-            data["working_directory"] = working_dir
+            data["workdir"] = working_dir
         
         response = await self._request("POST", f"/containers/projects/{project_id}/container/execute", data)
-        return response.get("data", {})
+        return response  # API returns data directly
+    
+    async def execute_encoded_command(self, project_id: str, encoded_command: str) -> Dict[str, Any]:
+        """Execute encoded command in project container."""
+        data = {"encoded_command": encoded_command}
+        
+        response = await self._request("POST", f"/containers/projects/{project_id}/container/execute-encoded", data)
+        return response  # API returns data directly
     
     async def get_container_logs(self, project_id: str, lines: int = 100) -> Dict[str, Any]:
         """Get container logs."""

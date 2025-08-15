@@ -555,6 +555,52 @@ class ContainerService:
             logger.error(f"Failed to execute project command: {e}")
             raise
     
+    async def execute_encoded_project_command(
+        self,
+        db: AsyncSession,
+        project_id: UUID,
+        user: User,
+        encoded_command: str
+    ) -> Dict[str, Any]:
+        """Execute an encoded command in project container."""
+        try:
+            from modules.backend.utils.command_decoder import CommandDecoder, CommandSanitizer
+            
+            # Decode the command specification
+            spec = CommandDecoder.decode_command(encoded_command)
+            
+            # Sanitize the command spec
+            safe_workdir = CommandSanitizer.get_safe_workdir(spec.workdir)
+            safe_environment = CommandSanitizer.sanitize_environment(spec.environment)
+            
+            container = await self.get_project_container(db, project_id, user)
+            
+            if not container:
+                # Auto-create container if it doesn't exist
+                container = await self.start_project_container(db, project_id, user)
+            
+            # Ensure container is running
+            if not container.is_running:
+                container = await self.start_container(db, container.id, user)
+            
+            # Execute command using the decoded specification
+            exit_code, output = await self.execute_command(
+                db, container.id, user, spec.command, safe_workdir
+            )
+            
+            return {
+                "exit_code": exit_code,
+                "output": output,
+                "command": spec.command,
+                "workdir": safe_workdir,
+                "environment": safe_environment,
+                "executed_at": datetime.utcnow().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to execute encoded project command: {e}")
+            raise
+    
     async def get_project_container_logs(
         self,
         db: AsyncSession,
