@@ -46,8 +46,8 @@ class RequestTrackingMiddleware(BaseHTTPMiddleware):
         except:
             pass  # Ignore auth errors in middleware
         
-        # Log request start
-        logger.info(
+        # Log request start (DEBUG level to reduce noise)
+        logger.debug(
             "request_started",
             method=request.method,
             path=request.url.path,
@@ -63,8 +63,8 @@ class RequestTrackingMiddleware(BaseHTTPMiddleware):
             # Calculate duration
             duration_ms = (time.time() - start_time) * 1000
             
-            # Log request completion
-            logger.info(
+            # Log request completion (DEBUG level to reduce noise)
+            logger.debug(
                 "request_completed",
                 status_code=response.status_code,
                 duration_ms=round(duration_ms, 2),
@@ -186,8 +186,8 @@ async def performance_middleware(request: Request, call_next):
     # Calculate duration
     duration = time.time() - start_time
     
-    # Log performance data
-    logger.info(
+    # Log performance data (DEBUG level for regular requests)
+    logger.debug(
         "request_completed",
         method=request.method,
         path=request.url.path,

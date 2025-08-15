@@ -52,11 +52,17 @@ LOG_LEVEL_LOWER=$(echo "$LOG_LEVEL" | tr '[:upper:]' '[:lower:]')
 
 # Start the backend
 echo "Starting backend server with log level: $LOG_LEVEL"
-$PYTHON_EXEC -m uvicorn modules.backend.main:app \
-    --reload \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --log-level "$LOG_LEVEL_LOWER" \
+
+# Determine if we should disable access logs based on log level
+UVICORN_ARGS="--reload --host 0.0.0.0 --port 8000 --log-level $LOG_LEVEL_LOWER"
+
+# Disable access logs for WARNING and ERROR levels to reduce noise
+if [ "$LOG_LEVEL_LOWER" = "warning" ] || [ "$LOG_LEVEL_LOWER" = "error" ] || [ "$LOG_LEVEL_LOWER" = "critical" ]; then
+    UVICORN_ARGS="$UVICORN_ARGS --no-access-log"
+    echo "Access logging disabled for cleaner output at $LOG_LEVEL level"
+fi
+
+$PYTHON_EXEC -m uvicorn modules.backend.main:app $UVICORN_ARGS \
     2>&1 | tee -a logs/backend/startup-$(date +%Y-%m-%d).log
 
 # The tee command will:
