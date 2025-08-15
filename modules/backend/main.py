@@ -22,6 +22,7 @@ from modules.backend.core.middleware import (
     PerformanceMiddleware,
     ErrorHandlingMiddleware,
 )
+from modules.backend.config.logging_config import setup_logging
 
 # Get logger
 logger = structlog.get_logger(__name__)
@@ -30,6 +31,13 @@ logger = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handle application startup and shutdown events."""
+    # Initialize logging first
+    setup_logging(
+        app_name="ai_dev_platform",
+        log_level=settings.log_level,
+        environment=settings.environment
+    )
+    
     # Startup
     logger.info(
         "Starting AI Development Platform",
