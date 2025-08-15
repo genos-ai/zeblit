@@ -51,6 +51,28 @@ class Settings(BaseSettings):
         description="Echo SQL queries (for debugging)"
     )
     
+    # Redis settings  
+    REDIS_URL: str = Field(
+        default="redis://localhost:6379/0",
+        alias="REDIS_URL", 
+        description="Redis server URL for caching and sessions"
+    )
+    REDIS_PASSWORD: Optional[str] = Field(
+        default=None,
+        alias="REDIS_PASSWORD",
+        description="Redis password if authentication is required"
+    )
+    REDIS_DB: int = Field(
+        default=0,
+        alias="REDIS_DB",
+        description="Redis database number"
+    )
+    REDIS_MAX_CONNECTIONS: int = Field(
+        default=20,
+        alias="REDIS_MAX_CONNECTIONS", 
+        description="Maximum Redis connections in pool"
+    )
+    
     # JWT settings
     JWT_SECRET: str = Field(
         default="your-secret-key-change-this-in-production",
@@ -230,6 +252,16 @@ class Settings(BaseSettings):
     def cors_origins(self) -> List[str]:
         """Get CORS origins as a list."""
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+    
+    @property
+    def redis_url(self) -> str:
+        """Get Redis URL with authentication if password is provided."""
+        if self.REDIS_PASSWORD:
+            # Insert password into Redis URL
+            if "://" in self.REDIS_URL:
+                protocol, rest = self.REDIS_URL.split("://", 1)
+                return f"{protocol}://:{self.REDIS_PASSWORD}@{rest}"
+        return self.REDIS_URL
     
     class Config:
         """Pydantic config."""
