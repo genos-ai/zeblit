@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     """Handle application startup and shutdown events."""
     # Initialize logging first
     setup_logging(
-        app_name="ai_dev_platform",
+        app_name="zeblit_platform",
         log_level=settings.log_level,
         environment=settings.environment
     )

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     
     # Database settings
     DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/ai_dev_platform",
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/zeblit_db",
         description="PostgreSQL database URL"
     )
     DATABASE_ECHO: bool = Field(

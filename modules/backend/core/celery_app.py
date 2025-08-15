@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 # Create Celery app
 celery_app = Celery(
-    "ai_dev_platform",
+    "zeblit_platform",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
     include=["src.backend.tasks"]

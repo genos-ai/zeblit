@@ -44,7 +44,7 @@ def add_app_context(logger, method_name: str, event_dict: Dict[str, Any]) -> Dic
     return event_dict
 
 def setup_logging(
-    app_name: str = "ai_dev_platform",
+    app_name: str = "zeblit_platform",
     log_level: str = "INFO",
     environment: str = "development"
 ):

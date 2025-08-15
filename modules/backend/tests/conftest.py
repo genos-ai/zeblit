@@ -34,7 +34,7 @@ setup_logging(
 )
 
 # Override settings for testing
-settings.DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_dev_platform_test"
+settings.DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/zeblit_db_test"
 settings.REDIS_URL = "redis://localhost:6379/1"  # Use Redis DB 1 for tests
 
 # Create test database engine

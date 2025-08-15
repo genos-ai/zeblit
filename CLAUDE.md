@@ -71,6 +71,56 @@ docker-compose logs -f frontend-dev
 
 # Reset everything
 docker-compose down -v  # Remove volumes too
+
+# Access development tools
+# Adminer (Database UI): http://localhost:8080
+# Redis Commander: http://localhost:8081
+```
+
+### Testing Commands
+
+#### Backend Testing
+```bash
+# Run tests with specific markers
+pytest modules/backend/tests -m unit -v
+pytest modules/backend/tests -m integration -v
+pytest modules/backend/tests -m "not slow" -v
+
+# Run tests with detailed output
+pytest modules/backend/tests -vv
+
+# Run tests in parallel (install pytest-xdist first)
+pytest modules/backend/tests -n auto
+```
+
+#### Frontend E2E Testing
+```bash
+cd modules/frontend
+
+# Install Playwright browsers
+bunx playwright install
+
+# Run E2E tests with UI mode
+bun run test:e2e:ui
+
+# Run specific test file
+bunx playwright test e2e/auth.spec.ts
+
+# Run tests in headed mode
+bunx playwright test --headed
+```
+
+### Security and Load Testing
+```bash
+# Security scanning for secrets
+python -m modules.backend.services.file_security scan <file_path>
+
+# Load testing with Locust
+locust -f scripts/load_test.py --host http://localhost:8000
+locust -f scripts/load_test.py --host http://localhost:8000 --users 100 --spawn-rate 10
+
+# Backup production data
+./scripts/backup/backup.sh
 ```
 
 ## Architecture Overview
@@ -163,11 +213,14 @@ type WebSocketEvent =
 
 ### Environment Variables
 Key variables (see `config/env.example`):
-- `DATABASE_URL`: PostgreSQL connection
-- `REDIS_URL`: Redis connection
+- `DATABASE_URL`: PostgreSQL connection string
+- `REDIS_URL`: Redis connection (defaults to localhost:6379)
 - `ANTHROPIC_API_KEY`: Claude API access
-- `JWT_SECRET`: Token signing key
-- `ORBSTACK_API_URL`: Container management API
+- `JWT_SECRET`: Token signing key (generate with: `openssl rand -hex 32`)
+- `ANTHROPIC_MODEL`: AI model selection (claude-4-opus-20250514 or claude-4-5-sonnet-20241022)
+- `MAX_CONTAINERS_PER_USER`: Container limit (default: 5)
+- `CONTAINER_MEMORY_LIMIT`: Memory per container (default: 2g)
+- `USER_DAILY_COST_LIMIT`: Daily AI usage limit (default: $10.00)
 
 ### Common Development Patterns
 
@@ -187,6 +240,12 @@ When modifying AI agents:
 
 When working with containers:
 1. Container service handles lifecycle in `services/container.py`
-2. OrbStack client in `core/orbstack_client.py`
+2. Docker SDK integration (OrbStack has been replaced with standard Docker)
 3. Each container gets unique port range (30000+)
 4. Containers auto-cleanup after 1 hour idle
+
+When handling file uploads or user content:
+1. Use `FileUtils` for path validation and sanitization
+2. Run `FileSecurityScanner` to detect secrets before processing
+3. Check file extensions against blocked list
+4. Validate file sizes against configured limits
