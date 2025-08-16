@@ -299,7 +299,12 @@ class ProjectService:
         if project.owner_id != user_id:
             raise AuthorizationError("Only project owner can delete")
         
-        # TODO: Clean up associated resources (files, containers, etc.)
+        # Clean up associated resources before deleting project
+        try:
+            await self._cleanup_project_resources(project_id, user_id)
+        except Exception as e:
+            logger.error(f"Failed to clean up project resources: {str(e)}")
+            raise Exception(f"Failed to clean up project resources: {str(e)}")
         
         success = await self.project_repo.delete(project_id)
         
@@ -582,4 +587,85 @@ class ProjectService:
             if c["user_id"] == user_id:
                 return c.get("can_write", False)
         
-        return False 
+        return False
+    
+    async def _cleanup_project_resources(self, project_id: UUID, user_id: UUID) -> None:
+        """
+        Clean up all resources associated with a project before deletion.
+        
+        Args:
+            project_id: Project ID to clean up
+            user_id: User performing the deletion
+        """
+        from sqlalchemy import delete, select
+        from modules.backend.models.project_file import ProjectFile
+        from modules.backend.models.container import Container
+        from modules.backend.models.conversation import Conversation, AgentMessage
+        from modules.backend.models.agent import Agent
+        from modules.backend.models.task import Task
+        from modules.backend.models.git_branch import GitBranch
+        from modules.backend.models.scheduled_task import ScheduledTask
+        
+        logger.info(f"Starting cleanup of project {project_id} resources")
+        
+        try:
+            # 1. Delete containers first (they depend on files)
+            containers_result = await self.db.execute(
+                delete(Container).where(Container.project_id == project_id)
+            )
+            logger.info(f"Deleted {containers_result.rowcount} containers")
+            
+            # 2. Delete agent messages (they depend on conversations and agents)
+            messages_result = await self.db.execute(
+                delete(AgentMessage).where(AgentMessage.conversation_id.in_(
+                    select(Conversation.id).where(Conversation.project_id == project_id)
+                ))
+            )
+            logger.info(f"Deleted {messages_result.rowcount} agent messages")
+            
+            # 3. Delete conversations
+            conversations_result = await self.db.execute(
+                delete(Conversation).where(Conversation.project_id == project_id)
+            )
+            logger.info(f"Deleted {conversations_result.rowcount} conversations")
+            
+            # 4. Delete project files
+            files_result = await self.db.execute(
+                delete(ProjectFile).where(ProjectFile.project_id == project_id)
+            )
+            logger.info(f"Deleted {files_result.rowcount} project files")
+            
+            # 5. Delete agents
+            agents_result = await self.db.execute(
+                delete(Agent).where(Agent.project_id == project_id)
+            )
+            logger.info(f"Deleted {agents_result.rowcount} agents")
+            
+            # 6. Delete tasks
+            tasks_result = await self.db.execute(
+                delete(Task).where(Task.project_id == project_id)
+            )
+            logger.info(f"Deleted {tasks_result.rowcount} tasks")
+            
+            # 7. Delete git branches
+            branches_result = await self.db.execute(
+                delete(GitBranch).where(GitBranch.project_id == project_id)
+            )
+            logger.info(f"Deleted {branches_result.rowcount} git branches")
+            
+            # 8. Delete scheduled tasks
+            scheduled_tasks_result = await self.db.execute(
+                delete(ScheduledTask).where(ScheduledTask.project_id == project_id)
+            )
+            logger.info(f"Deleted {scheduled_tasks_result.rowcount} scheduled tasks")
+            
+            # Commit all deletions
+            await self.db.commit()
+            
+            logger.info(f"Successfully cleaned up all resources for project {project_id}")
+            
+        except Exception as e:
+            # Rollback on error
+            await self.db.rollback()
+            logger.error(f"Failed to cleanup project resources: {str(e)}")
+            raise 
