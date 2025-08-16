@@ -269,8 +269,16 @@ class ZeblitAPIClient:
         if target_agent:
             data["target_agent"] = target_agent
         
-        response = await self._request("POST", f"/agents/projects/{project_id}/chat", data)
-        return response
+        # Use longer timeout for chat requests (AI responses can take time)
+        original_timeout = self._client.timeout
+        self._client.timeout = httpx.Timeout(120.0)  # 2 minutes for chat
+        
+        try:
+            response = await self._request("POST", f"/agents/projects/{project_id}/chat", data)
+            return response
+        finally:
+            # Restore original timeout
+            self._client.timeout = original_timeout
     
     async def get_chat_history(self, project_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get chat history for a project."""

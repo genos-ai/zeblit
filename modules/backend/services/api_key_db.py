@@ -219,7 +219,7 @@ class APIKeyServiceDB:
                     "is_active": api_key_obj.is_active,
                     "is_expired": api_key_obj.is_expired,
                     "created_at": api_key_obj.created_at.isoformat(),
-                    "metadata": api_key_obj.metadata or {}
+                    "metadata": api_key_obj.key_metadata or {}
                 })
             
             return keys

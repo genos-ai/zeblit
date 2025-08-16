@@ -96,7 +96,7 @@ def cli(ctx, debug: bool, verbose: bool):
 # Add command groups
 cli.add_command(auth_commands, name="auth")
 cli.add_command(project_commands, name="project")
-cli.add_command(chat_commands, name="chat") 
+cli.add_command(chat_commands, name="chat")
 cli.add_command(container_commands, name="container")
 cli.add_command(file_commands, name="files")
 cli.add_command(console_commands, name="console")
@@ -167,6 +167,9 @@ def console(ctx, project: Optional[str]):
     """Stream real-time console output (alias for 'console stream')."""
     from zeblit_cli.commands.console import stream_console_cmd
     asyncio.run(stream_console_cmd(project, follow=True))
+
+
+
 
 
 @cli.command("setup-completion")

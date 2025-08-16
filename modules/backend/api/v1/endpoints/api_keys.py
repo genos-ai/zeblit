@@ -68,7 +68,7 @@ async def create_api_key(
                 "prefix": api_key_obj.prefix,
                 "expires_at": api_key_obj.expires_at.isoformat() if api_key_obj.expires_at else None,
                 "created_at": api_key_obj.created_at.isoformat(),
-                "metadata": dict(api_key_obj.metadata) if api_key_obj.metadata else {}
+                "metadata": dict(api_key_obj.key_metadata) if api_key_obj.key_metadata else {}
             },
             "warning": "Store this API key securely. It cannot be retrieved again."
         }

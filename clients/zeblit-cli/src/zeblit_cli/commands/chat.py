@@ -11,6 +11,7 @@ Chat commands for agent interaction in Zeblit CLI.
 import asyncio
 import logging
 from typing import Optional
+import time
 
 import click
 from rich.console import Console
@@ -26,10 +27,88 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
-@click.group()
-def chat_commands():
-    """Agent chat and interaction commands."""
-    pass
+async def retry_with_timeout(func, max_retries=2, timeout_increase=30):
+    """
+    Retry a function with increasing timeouts and user feedback.
+    
+    Args:
+        func: Async function to retry
+        max_retries: Maximum number of retry attempts
+        timeout_increase: Additional seconds to add per retry
+    """
+    for attempt in range(max_retries + 1):
+        try:
+            if attempt > 0:
+                console.print(f"[yellow]⏱️  Request timed out. Retrying (attempt {attempt + 1}/{max_retries + 1}) with longer timeout...[/yellow]")
+            
+            return await func()
+            
+        except APIError as e:
+            error_msg = str(e)
+            
+            # Handle timeout errors
+            if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+                if attempt < max_retries:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    console.print(f"[yellow]⏳ Waiting {wait_time} seconds before retry...[/yellow]")
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    console.print("[red]❌ Request failed after multiple attempts.[/red]")
+                    console.print("[dim]The AI service may be experiencing high load. Please try again in a few minutes.[/dim]")
+                    return None
+            
+            # Handle other API errors
+            elif "Request failed" in error_msg and not error_msg.strip():
+                console.print("[red]❌ Connection failed.[/red]")
+                console.print("[dim]Please check your internet connection and ensure the backend is running.[/dim]")
+                return None
+            
+            # Handle authentication errors
+            elif "401" in error_msg or "unauthorized" in error_msg.lower():
+                console.print("[red]❌ Authentication failed.[/red]")
+                console.print("[dim]Please run 'zeblit auth login' to authenticate.[/dim]")
+                return None
+            
+            # Handle other specific errors
+            else:
+                console.print(f"[red]❌ Request failed:[/red] {error_msg}")
+                return None
+                
+        except Exception as e:
+            console.print(f"[red]❌ Unexpected error:[/red] {str(e)}")
+            return None
+    
+    return None
+
+
+@click.group(invoke_without_command=True)
+@click.argument("message", nargs=-1, required=False)
+@click.option("--agent", "-a", help="Target specific agent (default: DevManager)")
+@click.option("--project", "-p", help="Project ID (uses current project if not specified)")
+@click.pass_context
+def chat_commands(ctx, message: tuple, agent: Optional[str], project: Optional[str]):
+    """Agent chat and interaction commands.
+    
+    Usage:
+        zeblit chat "your message"              # Send message directly
+        zeblit chat send "your message"         # Alternative syntax
+        zeblit chat history                     # View chat history
+        zeblit chat agents                      # List available agents
+    """
+    # Check if first word is a known subcommand
+    subcommands = ['send', 'history', 'agents', 'main']
+    
+    if message and len(message) > 0 and message[0] in subcommands:
+        # This is actually a subcommand, let Click handle it normally
+        return
+    elif message:
+        # Direct message - invoke send_message_cmd
+        message_text = " ".join(message)
+        asyncio.run(send_message_cmd(message_text, agent, project))
+    elif ctx.invoked_subcommand is None:
+        # No message and no subcommand - show help
+        click.echo(ctx.get_help())
 
 
 @chat_commands.command("send")
@@ -65,19 +144,31 @@ async def send_message_cmd(message: str, agent: Optional[str], project_id: Optio
             # Show thinking indicator
             console.print(f"💭 Sending to {agent or 'DevManager'}: [dim]{message[:100]}{'...' if len(message) > 100 else ''}[/dim]")
             
-            with console.status("[bold blue]Agent is thinking..."):
-                # Send message to agents
-                response = await api_client.chat_with_agents(
-                    project_id=project_id,
-                    message=message,
-                    target_agent=agent
-                )
+            # Define the chat function to retry
+            async def make_chat_request():
+                with console.status("[bold blue]Agent is thinking..."):
+                    return await api_client.chat_with_agents(
+                        project_id=project_id,
+                        message=message,
+                        target_agent=agent
+                    )
             
-            # Display response
-            await display_agent_response(response)
+            # Retry with timeout handling
+            response = await retry_with_timeout(make_chat_request, max_retries=2)
+            
+            if response:
+                # Display response
+                await display_agent_response(response)
+            else:
+                console.print("\n💡 [bold]Troubleshooting tips:[/bold]")
+                console.print("  • Check that the backend is running: [bold]python start_backend.py[/bold]")
+                console.print("  • Verify your internet connection")
+                console.print("  • Try a shorter message if the request is very long")
+                console.print("  • Check backend logs for more details")
             
     except Exception as e:
         console.print(f"[red]Error sending message:[/red] {str(e)}")
+        logger.exception("Unexpected error in send_message_cmd")
 
 
 async def display_agent_response(response: dict):
