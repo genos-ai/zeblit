@@ -593,6 +593,10 @@ class ProjectService:
         """
         Clean up all resources associated with a project before deletion.
         
+        This includes:
+        - Physical containers and volumes from OrbStack/Docker
+        - All database records related to the project
+        
         Args:
             project_id: Project ID to clean up
             user_id: User performing the deletion
@@ -605,17 +609,19 @@ class ProjectService:
         from modules.backend.models.task import Task
         from modules.backend.models.git_branch import GitBranch
         from modules.backend.models.scheduled_task import ScheduledTask
+        from modules.backend.services.container import ContainerService
         
-        logger.info(f"Starting cleanup of project {project_id} resources")
+        logger.info(f"Starting comprehensive cleanup of project {project_id} resources")
         
         try:
-            # 1. Delete containers first (they depend on files)
-            containers_result = await self.db.execute(
-                delete(Container).where(Container.project_id == project_id)
-            )
-            logger.info(f"Deleted {containers_result.rowcount} containers")
+            # STEP 1: Clean up physical containers and volumes
+            logger.info(f"Step 1: Cleaning up physical containers for project {project_id}")
+            await self._cleanup_physical_containers(project_id, user_id)
             
-            # 2. Delete agent messages (they depend on conversations and agents)
+            # STEP 2: Clean up database records (in dependency order)
+            logger.info(f"Step 2: Cleaning up database records for project {project_id}")
+            
+            # 2.1. Delete agent messages (depend on conversations and agents)
             messages_result = await self.db.execute(
                 delete(AgentMessage).where(AgentMessage.conversation_id.in_(
                     select(Conversation.id).where(Conversation.project_id == project_id)
@@ -623,49 +629,148 @@ class ProjectService:
             )
             logger.info(f"Deleted {messages_result.rowcount} agent messages")
             
-            # 3. Delete conversations
+            # 2.2. Delete conversations
             conversations_result = await self.db.execute(
                 delete(Conversation).where(Conversation.project_id == project_id)
             )
             logger.info(f"Deleted {conversations_result.rowcount} conversations")
             
-            # 4. Delete project files
+            # 2.3. Delete project files  
             files_result = await self.db.execute(
                 delete(ProjectFile).where(ProjectFile.project_id == project_id)
             )
             logger.info(f"Deleted {files_result.rowcount} project files")
             
-            # 5. Delete agents
+            # 2.4. Delete container records (after physical cleanup)
+            containers_result = await self.db.execute(
+                delete(Container).where(Container.project_id == project_id)
+            )
+            logger.info(f"Deleted {containers_result.rowcount} container records")
+            
+            # 2.5. Delete agents
             agents_result = await self.db.execute(
                 delete(Agent).where(Agent.project_id == project_id)
             )
             logger.info(f"Deleted {agents_result.rowcount} agents")
             
-            # 6. Delete tasks
+            # 2.6. Delete tasks
             tasks_result = await self.db.execute(
                 delete(Task).where(Task.project_id == project_id)
             )
             logger.info(f"Deleted {tasks_result.rowcount} tasks")
             
-            # 7. Delete git branches
+            # 2.7. Delete git branches
             branches_result = await self.db.execute(
                 delete(GitBranch).where(GitBranch.project_id == project_id)
             )
             logger.info(f"Deleted {branches_result.rowcount} git branches")
             
-            # 8. Delete scheduled tasks
+            # 2.8. Delete scheduled tasks
             scheduled_tasks_result = await self.db.execute(
                 delete(ScheduledTask).where(ScheduledTask.project_id == project_id)
             )
             logger.info(f"Deleted {scheduled_tasks_result.rowcount} scheduled tasks")
             
-            # Commit all deletions
+            # Commit all database deletions
             await self.db.commit()
             
-            logger.info(f"Successfully cleaned up all resources for project {project_id}")
+            logger.info(f"Successfully completed comprehensive cleanup for project {project_id}")
             
         except Exception as e:
-            # Rollback on error
+            # Rollback database changes on error
             await self.db.rollback()
             logger.error(f"Failed to cleanup project resources: {str(e)}")
-            raise 
+            raise
+    
+    async def _cleanup_physical_containers(self, project_id: UUID, user_id: UUID) -> None:
+        """
+        Clean up physical containers and volumes for a project.
+        
+        Args:
+            project_id: Project ID
+            user_id: User performing the deletion
+        """
+        from sqlalchemy import select
+        from modules.backend.models.container import Container
+        from modules.backend.integrations.orbstack import orbstack_client
+        
+        try:
+            # Get all containers for this project from database
+            containers_query = select(Container).where(Container.project_id == project_id)
+            result = await self.db.execute(containers_query)
+            containers = result.scalars().all()
+            
+            logger.info(f"Found {len(containers)} containers to clean up for project {project_id}")
+            
+            for container in containers:
+                try:
+                    logger.info(f"Removing physical container {container.container_id}")
+                    
+                    # Remove container and its volumes using OrbStack client
+                    await orbstack_client.remove_container(
+                        container.container_id, 
+                        force=True
+                    )
+                    
+                    logger.info(f"Successfully removed container {container.container_id}")
+                    
+                except Exception as container_error:
+                    # Log but don't fail the whole cleanup if one container fails
+                    logger.warning(
+                        f"Failed to remove container {container.container_id}: {container_error}. "
+                        f"Container may already be removed or orphaned."
+                    )
+            
+            # Also clean up any orphaned containers that might not be in the database
+            await self._cleanup_orphaned_containers(project_id)
+            
+        except Exception as e:
+            logger.error(f"Error during physical container cleanup: {str(e)}")
+            # Don't re-raise here - continue with database cleanup
+    
+    async def _cleanup_orphaned_containers(self, project_id: UUID) -> None:
+        """
+        Clean up containers that might exist physically but not in database.
+        
+        Args:
+            project_id: Project ID to find orphaned containers for
+        """
+        try:
+            import subprocess
+            
+            # Get container name pattern for this project
+            project_short = str(project_id)[:8]  # First 8 chars of UUID
+            container_pattern = f"ai-dev-{project_short}"
+            
+            logger.info(f"Checking for orphaned containers matching pattern: {container_pattern}")
+            
+            # List all Docker containers matching pattern
+            result = subprocess.run(
+                ["docker", "ps", "-a", "--filter", f"name={container_pattern}", "--format", "{{.Names}}"],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0 and result.stdout.strip():
+                orphaned_containers = result.stdout.strip().split('\n')
+                
+                for container_name in orphaned_containers:
+                    if container_name.strip():
+                        try:
+                            logger.info(f"Removing orphaned container: {container_name}")
+                            
+                            # Force remove container with volumes
+                            subprocess.run(
+                                ["docker", "rm", "-f", "-v", container_name],
+                                capture_output=True,
+                                timeout=30
+                            )
+                            
+                            logger.info(f"Successfully removed orphaned container: {container_name}")
+                            
+                        except Exception as e:
+                            logger.warning(f"Failed to remove orphaned container {container_name}: {e}")
+            
+        except Exception as e:
+            logger.warning(f"Error checking for orphaned containers: {e}") 
