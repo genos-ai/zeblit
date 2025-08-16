@@ -214,7 +214,7 @@ class FileContainerSync:
             container_new_path = f"/workspace/{new_path}"
             
             # Execute move command in container
-            result = await orbstack_client.exec_command(
+            result = await orbstack_client.execute_command(
                 container.container_id,
                 f"mv '{container_old_path}' '{container_new_path}'"
             )
@@ -260,20 +260,35 @@ class FileContainerSync:
             # Ensure directory exists
             directory = os.path.dirname(container_path)
             if directory:
-                await orbstack_client.exec_command(
+                await orbstack_client.execute_command(
                     container.container_id,
                     f"mkdir -p '{directory}'"
                 )
             
             # Write file content
-            # Note: In real implementation, handle binary files appropriately
-            result = await orbstack_client.write_file(
+            # Note: Handle both base64-encoded and plain text content
+            file_content = file.content or ''
+            
+            # Check if content is base64 encoded (from file uploads)
+            if file.is_binary or self._is_base64_content(file_content):
+                try:
+                    # Decode base64 content
+                    import base64
+                    content_bytes = base64.b64decode(file_content)
+                except Exception:
+                    # If decode fails, treat as plain text
+                    content_bytes = file_content.encode('utf-8')
+            else:
+                # Plain text content (from direct file creation)
+                content_bytes = file_content.encode('utf-8')
+            
+            result = await orbstack_client.upload_file(
                 container.container_id,
                 container_path,
-                file.content or ''
+                content_bytes
             )
             
-            return result.get('success', False)
+            return result
         
         except Exception as e:
             logger.error(f"Failed to write file to container: {e}")
@@ -282,7 +297,7 @@ class FileContainerSync:
     async def _remove_file_from_container(self, container: Container, container_path: str) -> bool:
         """Remove file from container."""
         try:
-            result = await orbstack_client.exec_command(
+            result = await orbstack_client.execute_command(
                 container.container_id,
                 f"rm -f '{container_path}'"
             )
@@ -310,7 +325,7 @@ class FileContainerSync:
     async def _list_container_files(self, container: Container, path: str = "/workspace") -> List[Dict[str, Any]]:
         """List files in container directory."""
         try:
-            result = await orbstack_client.exec_command(
+            result = await orbstack_client.execute_command(
                 container.container_id,
                 f"find '{path}' -type f -exec stat --format='%n|%s|%Y' {{}} \\;"
             )
@@ -348,6 +363,23 @@ class FileContainerSync:
             logger.error(f"Failed to get project container: {e}")
             return None
     
+    def _is_base64_content(self, content: str) -> bool:
+        """Check if content appears to be base64 encoded."""
+        try:
+            import base64
+            import re
+            
+            # Base64 content should only contain base64 characters
+            if not re.match(r'^[A-Za-z0-9+/]*={0,2}$', content):
+                return False
+            
+            # Try to decode and re-encode to verify
+            decoded = base64.b64decode(content)
+            reencoded = base64.b64encode(decoded).decode('utf-8')
+            return reencoded == content
+        except Exception:
+            return False
+    
     async def ensure_container_workspace_structure(self, container: Container) -> bool:
         """
         Ensure proper workspace directory structure in container.
@@ -373,13 +405,13 @@ class FileContainerSync:
             ]
             
             for directory in directories:
-                await orbstack_client.exec_command(
+                await orbstack_client.execute_command(
                     container.container_id,
                     f"mkdir -p '{directory}'"
                 )
             
             # Set proper permissions
-            await orbstack_client.exec_command(
+            await orbstack_client.execute_command(
                 container.container_id,
                 "chown -R 1000:1000 /workspace"
             )

@@ -167,9 +167,23 @@ class FileService:
         metadata: Optional[Dict[str, Any]] = None
     ) -> ProjectFile:
         """Upload a binary file."""
-        return await self.upload_download.upload_file(
+        # Upload file to database first
+        project_file = await self.upload_download.upload_file(
             project_id, file_path, file_content, user, content_type, metadata
         )
+        
+        # Sync the file to the project container
+        try:
+            sync_result = await self.sync_file_to_container(project_file, None, 'create')
+            if sync_result:
+                logger.info(f"Uploaded file {file_path} synced to container successfully")
+            else:
+                logger.warning(f"Uploaded file {file_path} created in DB but sync to container failed")
+        except Exception as e:
+            logger.error(f"Error syncing uploaded file {file_path} to container: {str(e)}")
+            # Don't fail the upload if sync fails - file exists in DB
+        
+        return project_file
     
     async def download_file(self, file_id: UUID, user: User) -> Dict[str, Any]:
         """Download a file."""
