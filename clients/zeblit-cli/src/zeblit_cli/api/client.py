@@ -263,11 +263,15 @@ class ZeblitAPIClient:
         return True
     
     # Agent communication
-    async def chat_with_agents(self, project_id: str, message: str, target_agent: str = None) -> Dict[str, Any]:
+    async def chat_with_agents(self, project_id: str, message: str, target_agent: str = None, quick_model: bool = False, complex_model: bool = False) -> Dict[str, Any]:
         """Send message to project agents."""
         data = {"message": message}
         if target_agent:
             data["target_agent"] = target_agent
+        if quick_model:
+            data["model_preference"] = "quick"
+        elif complex_model:
+            data["model_preference"] = "complex"
         
         # Use longer timeout for chat requests (AI responses can take time)
         original_timeout = self._client.timeout

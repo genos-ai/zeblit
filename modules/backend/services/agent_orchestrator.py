@@ -54,7 +54,8 @@ class AgentOrchestrator:
         user_id: UUID,
         project_id: UUID,
         message: str,
-        target_agent: Optional[AgentType] = None
+        target_agent: Optional[AgentType] = None,
+        model_preference: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process a user message and route it to the appropriate agent.
@@ -90,8 +91,15 @@ class AgentOrchestrator:
             # Update agent status
             await self._broadcast_agent_status(project_id, agent_type, "processing")
             
-            # Get response from agent
-            response = await agent.think(message, context=context)
+            # Get response from agent with model preference
+            force_quick = model_preference == "quick"
+            force_complex = model_preference == "complex"
+            response = await agent.think(
+                message, 
+                context=context,
+                use_complex_model=force_complex,
+                force_quick_model=force_quick
+            )
             
             # Store conversation
             await self._store_conversation(

@@ -183,14 +183,18 @@ class Settings(BaseSettings):
         description="Google API key for Gemini"
     )
     
-    # Model selection settings
+    # Model selection settings - Tiered approach for performance/cost optimization
+    QUICK_MODEL: str = Field(
+        default="claude-3-5-haiku-20241022",
+        description="Fast model for simple chats and quick responses"
+    )
     PRIMARY_MODEL: str = Field(
         default="claude-sonnet-4-20250514",
-        description="Primary AI model to use"
+        description="Primary AI model for standard development tasks"
     )
     COMPLEX_MODEL: str = Field(
-        default="claude-opus-4-20250514",
-        description="Model for complex tasks"
+        default="claude-opus-4-1-20250805",
+        description="Model for complex tasks requiring deep thinking"
     )
     
     # User limits

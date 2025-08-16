@@ -86,8 +86,10 @@ async def retry_with_timeout(func, max_retries=2, timeout_increase=30):
 @click.argument("message", nargs=-1, required=False)
 @click.option("--agent", "-a", help="Target specific agent (default: DevManager)")
 @click.option("--project", "-p", help="Project ID (uses current project if not specified)")
+@click.option("--quick", is_flag=True, help="Use fast model (Haiku) for quick responses")
+@click.option("--complex", is_flag=True, help="Use complex model (Opus) for deep thinking")
 @click.pass_context
-def chat_commands(ctx, message: tuple, agent: Optional[str], project: Optional[str]):
+def chat_commands(ctx, message: tuple, agent: Optional[str], project: Optional[str], quick: bool, complex: bool):
     """Agent chat and interaction commands.
     
     Usage:
@@ -105,7 +107,7 @@ def chat_commands(ctx, message: tuple, agent: Optional[str], project: Optional[s
     elif message:
         # Direct message - invoke send_message_cmd
         message_text = " ".join(message)
-        asyncio.run(send_message_cmd(message_text, agent, project))
+        asyncio.run(send_message_cmd(message_text, agent, project, quick, complex))
     elif ctx.invoked_subcommand is None:
         # No message and no subcommand - show help
         click.echo(ctx.get_help())
@@ -115,13 +117,15 @@ def chat_commands(ctx, message: tuple, agent: Optional[str], project: Optional[s
 @click.argument("message", nargs=-1, required=True)
 @click.option("--agent", "-a", help="Target specific agent (default: DevManager)")
 @click.option("--project", "-p", help="Project ID (uses current project if not specified)")
-def send_message(message: tuple, agent: Optional[str], project: Optional[str]):
+@click.option("--quick", is_flag=True, help="Use fast model (Haiku) for quick responses")
+@click.option("--complex", is_flag=True, help="Use complex model (Opus) for deep thinking")
+def send_message(message: tuple, agent: Optional[str], project: Optional[str], quick: bool, complex: bool):
     """Send a message to project agents."""
     message_text = " ".join(message)
-    asyncio.run(send_message_cmd(message_text, agent, project))
+    asyncio.run(send_message_cmd(message_text, agent, project, quick, complex))
 
 
-async def send_message_cmd(message: str, agent: Optional[str], project_id: Optional[str]):
+async def send_message_cmd(message: str, agent: Optional[str], project_id: Optional[str], quick: bool = False, complex: bool = False):
     """Send message command implementation."""
     try:
         auth_manager = get_auth_manager()
@@ -150,7 +154,9 @@ async def send_message_cmd(message: str, agent: Optional[str], project_id: Optio
                     return await api_client.chat_with_agents(
                         project_id=project_id,
                         message=message,
-                        target_agent=agent
+                        target_agent=agent,
+                        quick_model=quick,
+                        complex_model=complex
                     )
             
             # Retry with timeout handling

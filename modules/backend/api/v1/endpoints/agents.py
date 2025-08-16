@@ -303,7 +303,8 @@ async def chat_with_agent(
             user_id=current_user.id,
             project_id=project_id,
             message=chat_request.message,
-            target_agent=target_agent_enum
+            target_agent=target_agent_enum,
+            model_preference=chat_request.model_preference
         )
         
         return AgentChatResponse(**response)

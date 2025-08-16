@@ -27,6 +27,7 @@ from modules.backend.models.agent import Agent as AgentModel, AgentType
 from modules.backend.models.task import Task, TaskStatus
 from modules.backend.models.conversation import Conversation, AgentMessage as AgentMessageModel
 from modules.backend.config.logging_config import get_logger, log_operation
+from modules.backend.core.model_selector import ModelSelector, ModelTier
 from modules.backend.services.task import TaskService
 from modules.backend.services.conversation import ConversationService
 from modules.backend.services.git import GitService
@@ -136,6 +137,7 @@ class BaseAgent(ABC):
         prompt: str,
         context: Optional[Dict[str, Any]] = None,
         use_complex_model: bool = False,
+        force_quick_model: bool = False,
     ) -> str:
         """
         Have the agent think about something and generate a response.
@@ -143,7 +145,8 @@ class BaseAgent(ABC):
         Args:
             prompt: The prompt to think about
             context: Additional context to include
-            use_complex_model: Whether to use the more capable model
+            use_complex_model: Force use of complex model (overrides auto-selection)
+            force_quick_model: Force use of quick model (overrides auto-selection)
             
         Returns:
             The agent's response
@@ -175,11 +178,25 @@ class BaseAgent(ABC):
                     LLMMessage(role=LLMRole.USER, content=prompt)
                 )
                 
-                # Choose model based on complexity
+                # Choose model using intelligent selection
                 from modules.backend.core.config import settings
-                model = (
-                    settings.agent_complex_model if use_complex_model
-                    else settings.agent_default_model
+                
+                if force_quick_model:
+                    model = settings.QUICK_MODEL
+                elif use_complex_model:
+                    model = settings.COMPLEX_MODEL
+                else:
+                    # Use intelligent model selection based on prompt content
+                    model = ModelSelector.select_model(prompt, context)
+                
+                # Log model selection for monitoring
+                model_tier = ModelSelector.get_tier_info(model)
+                logger.info(
+                    "Model selected for agent thinking",
+                    agent_type=self.agent_type.value,
+                    model=model,
+                    tier=model_tier["tier"],
+                    prompt_length=len(prompt)
                 )
                 
                 # Create config

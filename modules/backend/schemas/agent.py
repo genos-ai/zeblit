@@ -174,6 +174,7 @@ class AgentChatRequest(BaseModel):
     message: str = Field(..., description="Message to send to agent")
     target_agent: Optional[str] = Field(None, description="Optional specific agent type to target")
     context: Optional[Dict[str, Any]] = Field(None, description="Additional context for the agent")
+    model_preference: Optional[str] = Field(None, description="Model preference: 'quick', 'primary', or 'complex'")
     
     model_config = ConfigDict(json_schema_extra={
         "example": {
