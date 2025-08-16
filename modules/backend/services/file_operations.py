@@ -25,7 +25,7 @@ from modules.backend.core.exceptions import (
     ForbiddenError,
     ServiceError
 )
-from modules.backend.core.cache import cache
+from modules.backend.core.cache import project_cache
 from modules.backend.models import ProjectFile, Project, User
 from modules.backend.repositories import ProjectFileRepository, ProjectRepository
 from modules.backend.services.file_utils import FileUtils
@@ -593,10 +593,10 @@ class FileOperations:
     async def _clear_project_cache(self, project_id: UUID) -> None:
         """Clear project-related caches."""
         cache_keys = [
-            f"project:{project_id}:files",
-            f"project:{project_id}:tree",
-            f"project:{project_id}:stats"
+            f"{project_id}:files",
+            f"{project_id}:tree",
+            f"{project_id}:stats"
         ]
         
         for key in cache_keys:
-            await cache.delete(key)
+            await project_cache.delete(key)
