@@ -8,6 +8,7 @@ AI Agent endpoints.
 - 1.0.0 (2024-01-XX): Initial agent endpoints implementation.
 """
 
+import logging
 from typing import List, Optional
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.core.dependencies import get_db, get_current_user_multi_auth
 from modules.backend.models.user import User
+from modules.backend.models.agent import AgentType
 from modules.backend.services.agent import AgentService
 from modules.backend.services.agent_orchestrator import get_agent_orchestrator
 from modules.backend.schemas.agent import (
@@ -32,6 +34,8 @@ router = APIRouter(
     tags=["agents"],
     responses={404: {"description": "Not found"}},
 )
+
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=AgentListResponse)
@@ -273,13 +277,33 @@ async def chat_with_agent(
         Agent response with routing information
     """
     try:
+        # Convert target_agent string to AgentType enum if provided
+        target_agent_enum = None
+        if chat_request.target_agent:
+            try:
+                # Try to get the enum by name (case-insensitive)
+                target_agent_enum = AgentType[chat_request.target_agent.upper()]
+            except KeyError:
+                # Try to get by value (in case they use the exact enum value)
+                for agent_type in AgentType:
+                    if agent_type.value.lower() == chat_request.target_agent.lower():
+                        target_agent_enum = agent_type
+                        break
+                
+                if not target_agent_enum:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid agent type: {chat_request.target_agent}. "
+                               f"Available types: {', '.join([t.value for t in AgentType])}"
+                    )
+        
         orchestrator = get_agent_orchestrator()
         response = await orchestrator.process_user_message(
             db=db,
             user_id=current_user.id,
             project_id=project_id,
             message=chat_request.message,
-            target_agent=chat_request.target_agent
+            target_agent=target_agent_enum
         )
         
         return AgentChatResponse(**response)
@@ -305,8 +329,52 @@ async def get_chat_history(
     current_user: User = Depends(get_current_user_multi_auth),
 ):
     """Get chat history for a project."""
-    # TODO: Implement conversation history retrieval
-    return {"message": "Chat history endpoint - to be implemented"}
+    try:
+        from modules.backend.services.conversation import ConversationService
+        
+        conversation_service = ConversationService(db)
+        
+        # Get conversations for the project
+        conversations = await conversation_service.list_project_conversations(
+            project_id=project_id,
+            user_id=current_user.id,
+            is_active=True,
+            skip=offset,
+            limit=limit
+        )
+        
+        # Build chat history response
+        history = []
+        for conversation in conversations:
+            # Get messages for this conversation
+            messages = await conversation_service.get_conversation_messages(
+                conversation_id=conversation.id,
+                user_id=current_user.id,
+                skip=0,
+                limit=100  # Get recent messages for each conversation
+            )
+            
+            # Add messages to history
+            for message in messages:
+                history.append({
+                    "sender": "user" if message.role == "user" else message.role,
+                    "content": message.content,
+                    "timestamp": message.created_at.isoformat(),
+                    "conversation_id": str(conversation.id),
+                    "agent_id": str(conversation.agent_id) if conversation.agent_id else None
+                })
+        
+        # Sort by timestamp (most recent first)
+        history.sort(key=lambda x: x["timestamp"], reverse=True)
+        
+        return {"data": history[:limit]}
+        
+    except Exception as e:
+        logger.error(f"Failed to get chat history: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve chat history"
+        )
 
 
 @router.post("/projects/{project_id}/agents/{agent_type}/direct")

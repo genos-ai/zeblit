@@ -134,12 +134,47 @@ class ConversationService:
         if is_active is not None:
             criteria["is_active"] = is_active
         
-        return await self.conversation_repo.find(
-            criteria=criteria,
+        return await self.conversation_repo.get_user_conversations(
+            user_id=user_id,
+            project_id=project_id,
+            is_active=is_active,
             skip=skip,
-            limit=limit,
-            order_by=[("updated_at", "desc")]
+            limit=limit
         )
+    
+    async def get_recent_conversations(
+        self,
+        db: AsyncSession,
+        project_id: UUID,
+        limit: int = 10
+    ) -> List[Dict]:
+        """Get recent conversations for project context building."""
+        try:
+            # Get conversations for the project using base repository method
+            conversations = await self.conversation_repo.get_many(
+                filters={"project_id": project_id, "is_active": True},
+                skip=0,
+                limit=limit,
+                order_by="last_message_at",
+                order_desc=True
+            )
+            
+            # Convert to dict format for context
+            result = []
+            for conv in conversations:
+                result.append({
+                    "id": str(conv.id),
+                    "title": conv.title or "Untitled Conversation",
+                    "agent_type": conv.agent.agent_type.value if conv.agent else "unknown",
+                    "last_message_at": conv.last_message_at.isoformat() if conv.last_message_at else None,
+                    "message_count": conv.message_count
+                })
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to get recent conversations: {e}")
+            return []
     
     async def add_message(
         self,
@@ -175,23 +210,17 @@ class ConversationService:
         # Verify conversation and access
         conversation = await self.get_conversation(conversation_id, user_id)
         
-        # Create message
+        # Create message using repository method with supported parameters
         message = await self.conversation_repo.add_message(
             conversation_id=conversation_id,
-            role=role,
+            role=role.value if hasattr(role, 'value') else str(role),
             content=content,
-            message_type=message_type,
-            metadata=metadata or {},
-            agent_id=agent_id,
-            task_id=task_id,
-            target_agent=target_agent,
-            requires_response=requires_response
+            metadata=metadata or {}
         )
         
-        # Update conversation
+        # Update conversation message count
         await self.conversation_repo.update(
             conversation_id,
-            last_message_at=datetime.now(timezone.utc),
             message_count=conversation.message_count + 1
         )
         

@@ -196,7 +196,7 @@ class ConversationRepository(BaseRepository[Conversation]):
             output_tokens=output_tokens,
             total_tokens=input_tokens + output_tokens,
             model_used=model_used,
-            metadata=metadata or {}
+            message_metadata=metadata or {}
         )
         
         self.db.add(message)
@@ -206,13 +206,41 @@ class ConversationRepository(BaseRepository[Conversation]):
             conversation_id,
             message_count=conversation.message_count + 1,
             total_tokens=conversation.total_tokens + message.total_tokens,
-            last_message_at=datetime.now(timezone.utc)
+            last_message_at=datetime.utcnow()
         )
         
         await self.db.commit()
         await self.db.refresh(message)
         
         return message
+    
+    async def get_messages(
+        self,
+        conversation_id: UUID,
+        skip: int = 0,
+        limit: int = 50
+    ) -> List[AgentMessage]:
+        """
+        Get messages for a conversation.
+        
+        Args:
+            conversation_id: Conversation ID
+            skip: Number of records to skip
+            limit: Maximum records to return
+            
+        Returns:
+            List of messages
+        """
+        query = (
+            select(AgentMessage)
+            .where(AgentMessage.conversation_id == conversation_id)
+            .order_by(AgentMessage.created_at.asc())
+            .offset(skip)
+            .limit(limit)
+        )
+        
+        result = await self.db.execute(query)
+        return result.scalars().all()
     
     async def search_conversations(
         self,

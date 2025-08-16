@@ -396,15 +396,34 @@ class AgentOrchestrator:
     ) -> None:
         """Store conversation in database."""
         try:
-            conversation = Conversation(
-                user_id=user_id,
+            # Use the ConversationService to properly store the conversation
+            conversation_service = self._get_conversation_service(db)
+            
+            # Get or create a conversation for this session
+            conversation = await conversation_service.create_conversation(
                 project_id=project_id,
+                user_id=user_id,
                 agent_id=agent_id,
-                user_message=user_message,
-                agent_response=agent_response
+                title=f"Chat with Agent"
             )
-            db.add(conversation)
-            await db.commit()
+            
+            # Add user message
+            await conversation_service.add_message(
+                conversation_id=conversation.id,
+                user_id=user_id,
+                role="user",
+                content=user_message,
+                agent_id=None
+            )
+            
+            # Add agent response
+            await conversation_service.add_message(
+                conversation_id=conversation.id,
+                user_id=user_id,
+                role="assistant",
+                content=agent_response,
+                agent_id=agent_id
+            )
             
         except Exception as e:
             logger.error(f"Failed to store conversation: {e}")
