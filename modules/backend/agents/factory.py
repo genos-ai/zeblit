@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.agents.base import BaseAgent
-from modules.backend.agents.dev_manager import DevManagerAgent
+from modules.backend.agents.project_manager import ProjectManagerAgent
 from modules.backend.agents.product_manager import ProductManagerAgent
 from modules.backend.agents.data_analyst import DataAnalystAgent
 from modules.backend.agents.engineer import EngineerAgent
@@ -30,7 +30,7 @@ class AgentFactory:
     
     # Agent type to class mapping
     AGENT_CLASSES: Dict[AgentType, Type[BaseAgent]] = {
-        AgentType.DEV_MANAGER: DevManagerAgent,
+        AgentType.PROJECT_MANAGER: ProjectManagerAgent,
         AgentType.PRODUCT_MANAGER: ProductManagerAgent,
         AgentType.DATA_ANALYST: DataAnalystAgent,
         AgentType.ENGINEER: EngineerAgent,

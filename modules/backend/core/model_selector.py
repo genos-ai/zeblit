@@ -17,9 +17,10 @@ from modules.backend.core.config import settings
 
 class ModelTier(Enum):
     """Model complexity tiers."""
-    QUICK = "quick"      # Fast responses, simple tasks
-    PRIMARY = "primary"  # Standard development tasks
-    COMPLEX = "complex"  # Deep thinking, complex analysis
+    QUICK = "quick"        # Fast responses, simple tasks (Haiku)
+    PRIMARY = "primary"    # Default fast responses (Haiku) 
+    STANDARD = "standard"  # Development tasks (Sonnet)
+    COMPLEX = "complex"    # Deep thinking, complex analysis (Opus)
 
 
 class ModelSelector:
@@ -138,10 +139,14 @@ class ModelSelector:
         # Decision logic
         if complex_score >= 2:
             return cls._get_model_for_tier(ModelTier.COMPLEX)
-        elif quick_score >= 2 and primary_score == 0 and complex_score == 0:
+        elif primary_score >= 1:
+            # Development tasks get standard model (Sonnet)
+            return cls._get_model_for_tier(ModelTier.STANDARD)
+        elif quick_score >= 1 and primary_score == 0 and complex_score == 0:
+            # Explicitly simple tasks stay on quick
             return cls._get_model_for_tier(ModelTier.QUICK)
         else:
-            # Default to primary for most development tasks
+            # Default to primary (fast Haiku) for most interactions
             return cls._get_model_for_tier(ModelTier.PRIMARY)
     
     @classmethod
@@ -149,9 +154,11 @@ class ModelSelector:
         """Get the model name for a specific tier."""
         if tier == ModelTier.QUICK:
             return settings.QUICK_MODEL
+        elif tier == ModelTier.STANDARD:
+            return settings.STANDARD_MODEL
         elif tier == ModelTier.COMPLEX:
             return settings.COMPLEX_MODEL
-        else:  # PRIMARY
+        else:  # PRIMARY (default)
             return settings.PRIMARY_MODEL
     
     @classmethod
@@ -163,6 +170,12 @@ class ModelSelector:
                 "description": "Fast responses for simple chats",
                 "use_case": "Quick questions, status checks, simple interactions"
             }
+        elif model_name == settings.STANDARD_MODEL:
+            return {
+                "tier": ModelTier.STANDARD.value,
+                "description": "Standard development tasks",
+                "use_case": "Code implementation, file operations, testing"
+            }
         elif model_name == settings.COMPLEX_MODEL:
             return {
                 "tier": ModelTier.COMPLEX.value,
@@ -172,6 +185,6 @@ class ModelSelector:
         else:
             return {
                 "tier": ModelTier.PRIMARY.value,
-                "description": "Standard development tasks",
-                "use_case": "Code implementation, file operations, testing"
+                "description": "Default fast responses",
+                "use_case": "General chat, quick responses, most interactions"
             }

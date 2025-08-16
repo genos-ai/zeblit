@@ -184,7 +184,14 @@ class AnthropicProvider(LLMProvider):
         if system_prompt:
             request_data["system"] = system_prompt
         
-        if config.top_p is not None:
+        # Anthropic API doesn't allow both temperature and top_p
+        # Use temperature if provided, otherwise use top_p
+        if config.temperature != 0.7:  # If temperature is explicitly set
+            # Already added temperature above, don't add top_p
+            pass
+        elif config.top_p is not None and config.top_p != 1.0:
+            # Only use top_p if temperature is default and top_p is explicitly set
+            del request_data["temperature"]
             request_data["top_p"] = config.top_p
         
         if config.stop_sequences:
@@ -295,7 +302,14 @@ class AnthropicProvider(LLMProvider):
         if system_prompt:
             request_data["system"] = system_prompt
         
-        if config.top_p is not None:
+        # Anthropic API doesn't allow both temperature and top_p
+        # Use temperature if provided, otherwise use top_p
+        if config.temperature != 0.7:  # If temperature is explicitly set
+            # Already added temperature above, don't add top_p
+            pass
+        elif config.top_p is not None and config.top_p != 1.0:
+            # Only use top_p if temperature is default and top_p is explicitly set
+            del request_data["temperature"]
             request_data["top_p"] = config.top_p
         
         if config.stop_sequences:

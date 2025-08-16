@@ -23,6 +23,7 @@ from modules.backend.services.file_security import FileSecurityScanner
 from modules.backend.services.file_container_sync import FileContainerSync
 from modules.backend.services.file_upload_download import FileUploadDownload
 from modules.backend.services.file_utils import FileUtils
+from modules.backend.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -57,20 +58,31 @@ class FileService:
         metadata: Optional[Dict[str, Any]] = None
     ) -> ProjectFile:
         """Create a new file in a project."""
-        # Create file in database first
-        project_file = await self.operations.create_file(
-            project_id, file_path, content, user, encoding, metadata
-        )
+        try:
+            # Create file in database first
+            project_file = await self.operations.create_file(
+                project_id, file_path, content, user, encoding, metadata
+            )
+        except ValidationError:
+            # Re-raise validation errors (like "File already exists")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in create_file: {str(e)}", exc_info=True)
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error args: {e.args}")
+            raise
         
         # Sync the file to the project container
+        logger.debug(f"Starting container sync for file: {file_path}")
         try:
             sync_result = await self.sync_file_to_container(project_file, None, 'create')
+            logger.debug(f"Sync result for {file_path}: {sync_result}")
             if sync_result:
                 logger.info(f"File {file_path} synced to container successfully")
             else:
-                logger.warning(f"File {file_path} created in DB but sync to container failed")
+                logger.warning(f"File {file_path} created in DB but sync to container failed (sync_result={sync_result})")
         except Exception as e:
-            logger.error(f"Error syncing file {file_path} to container: {str(e)}")
+            logger.error(f"Error syncing file {file_path} to container: {str(e)}", exc_info=True)
             # Don't fail the file creation if sync fails - file exists in DB
         
         return project_file
@@ -128,8 +140,9 @@ class FileService:
         offset: int = 0
     ) -> Tuple[List[ProjectFile], int]:
         """List files in a project."""
-        # Temporary debug: Return empty list immediately
-        return [], 0
+        return await self.operations.list_files(
+            project_id, user, path_filter, file_type, include_deleted, limit, offset
+        )
     
     async def move_file(self, file_id: UUID, new_path: str, user: User) -> ProjectFile:
         """Move/rename a file."""
@@ -240,8 +253,11 @@ class FileService:
     
     async def sync_file_to_container(self, file: ProjectFile, container_id: UUID, operation: str = 'create') -> bool:
         """Sync a file to container."""
+        logger.debug(f"sync_file_to_container called with file: {file.file_path}, container_id: {container_id}, operation: {operation}")
         container = await self.container_sync.get_project_container(file.project_id)
+        logger.debug(f"Retrieved container for project {file.project_id}: {container}")
         if not container:
+            logger.warning(f"No container found for project {file.project_id}")
             return False
         return await self.container_sync.sync_file_to_container(file, container, operation)
     

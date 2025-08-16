@@ -1,7 +1,7 @@
 """
-Development Manager Agent implementation.
+Project Manager Agent implementation.
 
-The Development Manager orchestrates all other agents, breaks down tasks,
+The Project Manager orchestrates all other agents, breaks down tasks,
 assigns work, monitors progress, and ensures successful project completion.
 """
 
@@ -24,9 +24,9 @@ from modules.backend.config.logging_config import get_logger, log_operation
 logger = get_logger(__name__)
 
 
-class DevManagerAgent(BaseAgent):
+class ProjectManagerAgent(BaseAgent):
     """
-    Development Manager agent responsible for:
+    Project Manager agent responsible for:
     - Breaking down user requirements into tasks
     - Assigning tasks to appropriate agents
     - Monitoring progress and dependencies
@@ -36,8 +36,8 @@ class DevManagerAgent(BaseAgent):
     """
     
     def get_system_prompt(self) -> str:
-        """Get the system prompt for the Development Manager."""
-        return """You are the Development Manager for an AI-powered development platform.
+        """Get the system prompt for the Project Manager."""
+        return """You are the Project Manager for an AI-powered development platform.
 
 Your responsibilities:
 1. Analyze user requirements and break them down into specific, actionable tasks
@@ -73,7 +73,7 @@ When creating tasks, provide:
     
     async def process_task(self, task: Task) -> Dict[str, Any]:
         """
-        Process a task as the Development Manager.
+        Process a task as the Project Manager.
         
         Main task types:
         - PLANNING: Break down requirements into subtasks
@@ -82,7 +82,7 @@ When creating tasks, provide:
         - STATUS: Generate status reports
         """
         logger.info(
-            "Development Manager processing task",
+            "Project Manager processing task",
             task_id=str(task.id),
             task_type=task.type.value,
             task_title=task.title,
@@ -96,7 +96,7 @@ When creating tasks, provide:
             elif task.type == TaskType.REVIEW:
                 return await self._handle_review_task(task)
             elif task.type == TaskType.IMPLEMENTATION:
-                # Dev Manager can also provide guidance on implementation
+                # Project Manager can also provide guidance on implementation
                 return await self._handle_implementation_guidance(task)
             else:
                 # Generic task handling
@@ -123,9 +123,166 @@ When creating tasks, provide:
                 "task_id": str(task.id),
             }
     
+    async def execute_multi_agent_workflow(self, user_request: str, project_context: Dict) -> Dict[str, Any]:
+        """Execute a complete multi-agent workflow for user request."""
+        
+        # Step 1: Create task breakdown
+        task_plan = await self._create_task_breakdown(user_request, project_context)
+        
+        # Step 2: Execute tasks in order
+        execution_results = []
+        for task_spec in task_plan['tasks']:
+            result = await self._execute_agent_task(task_spec, project_context)
+            execution_results.append(result)
+            
+            # Stop if any task fails
+            if not result.get('success', False):
+                break
+        
+        return {
+            "workflow_complete": True,
+            "task_plan": task_plan,
+            "execution_results": execution_results,
+            "files_created": self._extract_created_files(execution_results)
+        }
+    
+    async def _create_task_breakdown(self, user_request: str, project_context: Dict) -> Dict[str, Any]:
+        """Create detailed task breakdown for user request."""
+        prompt = f"""Analyze this user request and create a task breakdown: {user_request}
+
+Create a JSON response with tasks that agents should execute:
+{{
+    "analysis": "Brief analysis of the request",
+    "requires_security": true/false,
+    "tasks": [
+        {{
+            "agent": "product_manager|engineer|security_engineer|platform_engineer",
+            "action": "create_file|review_code|setup_deployment",
+            "file_path": "path/to/file.ext",
+            "description": "What the agent should do",
+            "content_type": "requirements|code|config|documentation"
+        }}
+    ]
+}}
+
+Focus on creating actual deliverable files that solve the user's request."""
+        
+        response = await self.think(prompt, use_complex_model=True)
+        
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            # Fallback to simple task structure
+            return {
+                "analysis": "Could not parse complex breakdown",
+                "requires_security": "security" in user_request.lower() or "auth" in user_request.lower(),
+                "tasks": [
+                    {
+                        "agent": "engineer", 
+                        "action": "create_file",
+                        "file_path": "main.py",
+                        "description": user_request,
+                        "content_type": "code"
+                    }
+                ]
+            }
+    
+    async def _execute_agent_task(self, task_spec: Dict, project_context: Dict) -> Dict[str, Any]:
+        """Execute a specific task by delegating to appropriate agent."""
+        
+        agent_type = task_spec.get('agent', 'engineer')
+        action = task_spec.get('action', 'create_file') 
+        
+        if action == 'create_file':
+            return await self._execute_file_creation_task(task_spec, project_context)
+        elif action == 'setup_deployment':
+            return await self._execute_deployment_task(task_spec, project_context)
+        else:
+            return await self._execute_general_task(task_spec, project_context)
+    
+    async def _execute_file_creation_task(self, task_spec: Dict, project_context: Dict) -> Dict[str, Any]:
+        """Execute file creation task."""
+        
+        # Generate file content based on task
+        content_prompt = f"""Create {task_spec['content_type']} content for: {task_spec['description']}
+
+File: {task_spec['file_path']}
+Context: {project_context.get('name', 'application')}
+
+Provide complete, working content that can be used immediately."""
+        
+        file_content = await self.think(content_prompt, use_complex_model=True)
+        
+        # Create the file using agent file service
+        result = await self.create_file(
+            project_id=self.project_id,
+            file_path=task_spec['file_path'],
+            content=file_content,
+            user=self.user,
+            file_type=task_spec['content_type']
+        )
+        
+        return {
+            "success": result.get('success', False),
+            "task": task_spec,
+            "file_created": task_spec['file_path'],
+            "result": result
+        }
+    
+    async def _execute_deployment_task(self, task_spec: Dict, project_context: Dict) -> Dict[str, Any]:
+        """Execute deployment task by delegating to Platform Engineer."""
+        
+        # This would use agent collaboration in full implementation
+        deployment_prompt = f"""Create deployment configuration for: {task_spec['description']}
+
+Project: {project_context.get('name', 'application')}
+
+Create necessary deployment files (Dockerfile, docker-compose.yml, etc.)"""
+        
+        config_content = await self.think(deployment_prompt, use_complex_model=True)
+        
+        # Create deployment config file
+        result = await self.create_file(
+            project_id=self.project_id,
+            file_path="Dockerfile",
+            content=config_content,
+            user=self.user,
+            file_type="deployment_config"
+        )
+        
+        return {
+            "success": result.get('success', False),
+            "task": task_spec,
+            "deployment_ready": True,
+            "result": result
+        }
+    
+    async def _execute_general_task(self, task_spec: Dict, project_context: Dict) -> Dict[str, Any]:
+        """Execute general task."""
+        
+        general_prompt = f"""Execute this task: {task_spec['description']}
+
+Provide specific actions taken and results."""
+        
+        response = await self.think(general_prompt)
+        
+        return {
+            "success": True,
+            "task": task_spec,
+            "response": response
+        }
+    
+    def _extract_created_files(self, execution_results: list) -> list:
+        """Extract list of files created during execution."""
+        files = []
+        for result in execution_results:
+            if result.get('file_created'):
+                files.append(result['file_created'])
+        return files
+
     async def _handle_planning_task(self, task: Task) -> Dict[str, Any]:
         """Break down requirements into subtasks."""
-        with log_operation("dev_manager_planning", task_id=str(task.id)):
+        with log_operation("project_manager_planning", task_id=str(task.id)):
             # Update progress
             await self.update_task_progress(task, 0.1, "Analyzing requirements...")
             

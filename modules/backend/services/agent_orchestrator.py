@@ -55,7 +55,7 @@ class AgentOrchestrator:
         project_id: UUID,
         message: str,
         target_agent: Optional[AgentType] = None,
-        model_preference: Optional[str] = None
+        llm_preference: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process a user message and route it to the appropriate agent.
@@ -76,11 +76,20 @@ class AgentOrchestrator:
             if not project or project.owner_id != user_id:
                 raise NotFoundError("Project not found or access denied")
             
-            # Determine target agent (default to Dev Manager)
-            agent_type = target_agent or AgentType.DEV_MANAGER
+            # Determine target agent (default to Project Manager)
+            agent_type = target_agent or AgentType.PROJECT_MANAGER
             
             # Get or create agent
             agent = await self._get_or_create_agent(db, project_id, agent_type)
+            
+            # Get the user object and set it on ALL agents for file operations
+            user = await db.get(User, user_id)
+            if not user:
+                raise NotFoundError("User not found")
+            
+            # Set user context on the agent for file operations
+            agent.user = user
+            agent.project_id = project_id
             
             # Add project context
             context = await self._build_project_context(db, project_id)
@@ -91,15 +100,36 @@ class AgentOrchestrator:
             # Update agent status
             await self._broadcast_agent_status(project_id, agent_type, "processing")
             
-            # Get response from agent with model preference
-            force_quick = model_preference == "quick"
-            force_complex = model_preference == "complex"
-            response = await agent.think(
-                message, 
-                context=context,
-                use_complex_model=force_complex,
-                force_quick_model=force_quick
-            )
+            # Get response from agent with LLM preference
+            force_quick = llm_preference == "quick"
+            force_complex = llm_preference == "complex"
+            
+            # Check if this is a ProjectManager request that should execute workflows
+            if (agent_type == AgentType.PROJECT_MANAGER and 
+                self._should_execute_workflow(message)):
+                
+                # Execute multi-agent workflow instead of just thinking
+                from modules.backend.agents.project_manager import ProjectManagerAgent
+                if isinstance(agent, ProjectManagerAgent):
+                    workflow_result = await agent.execute_multi_agent_workflow(
+                        message, 
+                        context
+                    )
+                    response = self._format_workflow_response(workflow_result)
+                else:
+                    response = await agent.think(
+                        message, 
+                        context=context,
+                        use_complex_model=force_complex,
+                        force_quick_model=force_quick
+                    )
+            else:
+                response = await agent.think(
+                    message, 
+                    context=context,
+                    use_complex_model=force_complex,
+                    force_quick_model=force_quick
+                )
             
             # Store conversation
             await self._store_conversation(
@@ -135,6 +165,7 @@ class AgentOrchestrator:
         project_id: UUID,
         agent_type: AgentType,
         message: str,
+        user_id: Optional[UUID] = None,
         context: Optional[Dict[str, Any]] = None,
         source_agent: Optional[AgentType] = None
     ) -> Dict[str, Any]:
@@ -155,6 +186,13 @@ class AgentOrchestrator:
         try:
             # Get or create target agent
             agent = await self._get_or_create_agent(db, project_id, agent_type)
+            
+            # Set user context if user_id is provided
+            if user_id:
+                user = await db.get(User, user_id)
+                if user:
+                    agent.user = user
+                    agent.project_id = project_id
             
             # Build enhanced context
             full_context = await self._build_project_context(db, project_id)
@@ -509,6 +547,46 @@ class AgentOrchestrator:
         """Remove inactive agents from memory."""
         # TODO: Implement agent cleanup based on last activity
         pass
+    
+    def _should_execute_workflow(self, message: str) -> bool:
+        """Determine if message should trigger multi-agent workflow execution."""
+        workflow_keywords = [
+            "create", "build", "implement", "develop", "make", "generate",
+            "deploy", "setup", "configure", "install", "write code",
+            "app", "application", "system", "project", "feature"
+        ]
+        
+        message_lower = message.lower()
+        return any(keyword in message_lower for keyword in workflow_keywords)
+    
+    def _format_workflow_response(self, workflow_result: dict) -> str:
+        """Format workflow execution result for user display."""
+        if not workflow_result.get('workflow_complete', False):
+            return "Workflow execution failed. Please try again."
+        
+        files_created = workflow_result.get('files_created', [])
+        execution_results = workflow_result.get('execution_results', [])
+        
+        response = "🎉 Multi-agent workflow completed successfully!\n\n"
+        
+        if files_created:
+            response += "📁 Files Created:\n"
+            for file_path in files_created:
+                response += f"   • {file_path}\n"
+            response += "\n"
+        
+        if execution_results:
+            response += "✅ Tasks Completed:\n"
+            for i, result in enumerate(execution_results, 1):
+                if result.get('success'):
+                    task = result.get('task', {})
+                    response += f"   {i}. {task.get('description', 'Task completed')}\n"
+            response += "\n"
+        
+        response += "🚀 Your project is ready! Use 'zeblit files list' to see all created files.\n"
+        response += "💡 Next steps: Review the files and run 'zeblit container run python main.py' to test!"
+        
+        return response
 
 
 # Factory function for creating agent orchestrator instances

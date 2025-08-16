@@ -130,6 +130,33 @@ async def get_workspace_files(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/sync", response_model=FileSyncResponse)
+async def sync_container_files(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_multi_auth)
+) -> FileSyncResponse:
+    """
+    Sync files from container workspace to project database.
+    
+    This endpoint discovers files that exist in the container but not in the database
+    and creates database records for them. This is essential for agent-created files.
+    """
+    file_service = FileService(db)
+    
+    try:
+        sync_results = await file_service.sync_container_files_to_database(project_id)
+        
+        return FileSyncResponse(
+            synced=sync_results.get('new_files', 0) + sync_results.get('updated_files', 0),
+            total=sync_results.get('total_files', 0),
+            errors=sync_results.get('errors', [])
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/{file_path:path}", response_model=FileResponse)
 async def read_file(
     project_id: UUID,

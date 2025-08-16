@@ -101,6 +101,7 @@ htmlcov/
 *.swo
 tmp/
 temp/
+data/tmp/
 
 # User uploads
 uploads/

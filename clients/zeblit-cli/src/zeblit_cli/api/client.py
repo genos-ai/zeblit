@@ -106,6 +106,16 @@ class ZeblitAPIClient:
             if not url.startswith('/'):
                 url = f'/{url}'
             
+            # Debug logging
+            if self.settings.debug:
+                console.print(f"[dim]🌐 API Request:[/dim]")
+                console.print(f"[dim]   Method: {method}[/dim]")
+                console.print(f"[dim]   URL: {self.settings.api_base_url}{url}[/dim]")
+                if params:
+                    console.print(f"[dim]   Params: {params}[/dim]")
+                if data and not files:  # Don't log file data
+                    console.print(f"[dim]   Data: {data}[/dim]")
+            
             request_kwargs = {
                 'method': method,
                 'url': url,
@@ -175,12 +185,23 @@ class ZeblitAPIClient:
             # Make request
             response = await self._client.request(**request_kwargs)
             
+            # Debug logging for response
+            if self.settings.debug:
+                console.print(f"[dim]📨 API Response:[/dim]")
+                console.print(f"[dim]   Status: {response.status_code}[/dim]")
+                console.print(f"[dim]   Headers: {dict(response.headers)}[/dim]" if self.settings.preferences.verbose_output else "")
+            
             # Handle response
             if response.status_code == 204:  # No content
                 return {"success": True}
             
             try:
                 response_data = response.json()
+                
+                # Debug logging for response data
+                if self.settings.debug and self.settings.preferences.verbose_output:
+                    console.print(f"[dim]   Response data: {response_data}[/dim]")
+                    
             except json.JSONDecodeError:
                 if response.is_success:
                     return {"success": True, "data": response.text}
@@ -269,9 +290,9 @@ class ZeblitAPIClient:
         if target_agent:
             data["target_agent"] = target_agent
         if quick_model:
-            data["model_preference"] = "quick"
+            data["llm_preference"] = "quick"
         elif complex_model:
-            data["model_preference"] = "complex"
+            data["llm_preference"] = "complex"
         
         # Use longer timeout for chat requests (AI responses can take time)
         original_timeout = self._client.timeout

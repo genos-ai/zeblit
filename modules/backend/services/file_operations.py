@@ -82,6 +82,9 @@ class FileOperations:
         if existing and not existing.is_deleted:
             raise ValidationError(f"File already exists: {file_path}")
         
+        # If a soft-deleted file exists, we can reuse its ID or create a new one
+        # For now, we'll create a new file record
+        
         # Get file info
         file_info = FileUtils.get_file_info(file_path, content, encoding)
         

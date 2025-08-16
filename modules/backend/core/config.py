@@ -189,8 +189,12 @@ class Settings(BaseSettings):
         description="Fast model for simple chats and quick responses"
     )
     PRIMARY_MODEL: str = Field(
+        default="claude-3-5-haiku-20241022",
+        description="Default AI model - fast responses for most interactions"
+    )
+    STANDARD_MODEL: str = Field(
         default="claude-sonnet-4-20250514",
-        description="Primary AI model for standard development tasks"
+        description="Standard model for development tasks requiring more capability"
     )
     COMPLEX_MODEL: str = Field(
         default="claude-opus-4-1-20250805",

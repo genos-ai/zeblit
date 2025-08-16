@@ -108,6 +108,15 @@ async def list_files_cmd(path: str, project_id: Optional[str]):
         auth_manager = get_auth_manager()
         settings = get_settings()
         
+        # Check debug mode
+        debug_mode = settings.debug
+        verbose_mode = settings.preferences.verbose_output
+        
+        if debug_mode:
+            console.print("[dim]🐛 Debug mode enabled for files list[/dim]")
+            console.print(f"[dim]Path: {path}[/dim]")
+            console.print(f"[dim]Project ID: {project_id or 'Using current project'}[/dim]")
+        
         await auth_manager.require_auth()
         
         if not project_id:
@@ -116,10 +125,20 @@ async def list_files_cmd(path: str, project_id: Optional[str]):
                 console.print("[red]No project specified[/red]")
                 return
         
+        if debug_mode:
+            console.print(f"[dim]📍 API endpoint: /projects/{project_id}/files[/dim]")
+            console.print(f"[dim]Query path: {path}[/dim]")
+        
         async with ZeblitAPIClient(auth_manager) as api_client:
             auth_manager.set_api_client(api_client)
             
             files = await api_client.list_files(project_id, path)
+            
+            if debug_mode:
+                console.print(f"[dim]📥 Response received:[/dim]")
+                console.print(f"[dim]   Number of files: {len(files) if files else 0}[/dim]")
+                if verbose_mode and files:
+                    console.print(f"[dim]   Files data: {files}[/dim]")
             
             if not files:
                 console.print(f"📁 Directory '{path}' is empty")
@@ -134,11 +153,11 @@ async def list_files_cmd(path: str, project_id: Optional[str]):
             table.add_column("Modified", style="dim")
             
             for file_info in files:
-                name = file_info.get("name", "unknown")
+                name = file_info.get("file_name", file_info.get("name", "unknown"))
                 file_type = "📁 Directory" if file_info.get("type") == "directory" else "📄 File"
-                size = file_info.get("size", 0)
+                size = file_info.get("file_size", file_info.get("size", 0))
                 size_str = f"{size:,} bytes" if file_type == "📄 File" else "-"
-                modified = file_info.get("modified", "").split("T")[0] if file_info.get("modified") else "N/A"
+                modified = file_info.get("updated_at", file_info.get("modified", "")).split("T")[0] if file_info.get("updated_at") or file_info.get("modified") else "N/A"
                 
                 table.add_row(name, file_type, size_str, modified)
             
@@ -318,3 +337,68 @@ async def edit_file_cmd(remote_path: str, project_id: Optional[str], editor: Opt
             
     except Exception as e:
         console.print(f"[red]Error editing file:[/red] {str(e)}")
+
+
+@file_commands.command("sync")
+@click.option("--project", "-p", help="Project ID (uses current project if not specified)")
+def file_sync(project: Optional[str]):
+    """Sync files from container to project database."""
+    asyncio.run(file_sync_cmd(project))
+
+
+async def file_sync_cmd(project_id: Optional[str]):
+    """File sync command implementation."""
+    try:
+        auth_manager = get_auth_manager()
+        settings = get_settings()
+        
+        # Check debug mode
+        debug_mode = settings.debug
+        verbose_mode = settings.preferences.verbose_output
+        
+        if debug_mode:
+            console.print("[dim]🐛 Debug mode enabled for files sync[/dim]")
+            console.print(f"[dim]Project ID: {project_id or 'Using current project'}[/dim]")
+        
+        await auth_manager.require_auth()
+        
+        # Get project ID
+        if not project_id:
+            project_id = settings.current_project_id
+            if not project_id:
+                console.print("[red]No current project selected. Use 'zeblit use <project_id>' or specify --project[/red]")
+                return
+        
+        client = ZeblitAPIClient(auth_manager)
+        
+        with console.status("[bold green]Syncing files from container to database..."):
+            # First, try to call a sync endpoint if it exists
+            try:
+                # Check if there's a sync endpoint
+                response = await client._request(
+                    "POST",
+                    f"/projects/{project_id}/files/sync"
+                )
+                
+                console.print("✅ [green]Files synced successfully![/green]")
+                console.print(f"📊 Sync Results:")
+                console.print(f"   • Files synced: {response.get('synced', 0)}")
+                console.print(f"   • Total files: {response.get('total', 0)}")
+                if response.get('errors'):
+                    console.print(f"   • Errors: {len(response['errors'])}")
+                    for error in response['errors']:
+                        console.print(f"     - {error}")
+                        
+                if response.get('synced', 0) == 0:
+                    console.print("[yellow]ℹ️ No new files found to sync[/yellow]")
+                    
+            except APIError as e:
+                if e.status_code == 404:
+                    console.print("[yellow]⚠️ Sync endpoint not available yet. This is a known limitation.[/yellow]")
+                    console.print("[blue]💡 Files created in container need manual sync implementation.[/blue]")
+                else:
+                    raise
+                    
+    except Exception as e:
+        console.print(f"[red]Error syncing files:[/red] {str(e)}")
+        logger.error(f"File sync failed: {e}")

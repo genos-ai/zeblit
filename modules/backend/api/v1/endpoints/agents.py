@@ -297,14 +297,18 @@ async def chat_with_agent(
                                f"Available types: {', '.join([t.value for t in AgentType])}"
                     )
         
+        # Decode message if it's base64 encoded
+        from modules.backend.utils.encoding import decode_chat_message
+        decoded_message = decode_chat_message(chat_request.message)
+        
         orchestrator = get_agent_orchestrator()
         response = await orchestrator.process_user_message(
             db=db,
             user_id=current_user.id,
             project_id=project_id,
-            message=chat_request.message,
+            message=decoded_message,
             target_agent=target_agent_enum,
-            model_preference=chat_request.model_preference
+            llm_preference=chat_request.llm_preference
         )
         
         return AgentChatResponse(**response)
@@ -408,12 +412,17 @@ async def direct_agent_message(
                 detail=f"Invalid agent type: {agent_type}"
             )
         
+        # Decode message if it's base64 encoded
+        from modules.backend.utils.encoding import decode_chat_message
+        decoded_message = decode_chat_message(chat_request.message)
+        
         orchestrator = get_agent_orchestrator()
         response = await orchestrator.route_to_agent(
             db=db,
             project_id=project_id,
             agent_type=target_agent,
-            message=chat_request.message,
+            message=decoded_message,
+            user_id=current_user.id,
             context=chat_request.context
         )
         

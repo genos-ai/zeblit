@@ -50,20 +50,31 @@ class FileContainerSync:
         Returns:
             True if sync successful
         """
+        logger.debug(f"Starting sync_file_to_container for file: {file.file_path}, operation: {operation}")
+        logger.debug(f"Container ID: {container.id}, Status: {container.status}")
+        
         try:
             if container.status != ContainerStatus.RUNNING:
-                logger.warning(f"Container {container.id} not running, skipping file sync")
+                logger.warning(f"Container {container.id} not running (status: {container.status}), skipping file sync")
                 return False
             
             container_path = f"/workspace/{file.file_path}"
+            logger.debug(f"Container path: {container_path}")
             
             if operation == 'delete':
-                return await self._remove_file_from_container(container, container_path)
+                logger.debug(f"Attempting to remove file from container: {container_path}")
+                result = await self._remove_file_from_container(container, container_path)
+                logger.debug(f"Remove file result: {result}")
+                return result
             else:
-                return await self._write_file_to_container(file, container, container_path)
+                logger.debug(f"Attempting to write file to container: {container_path}")
+                logger.debug(f"File content length: {len(file.content or '')} bytes")
+                result = await self._write_file_to_container(file, container, container_path)
+                logger.debug(f"Write file result: {result}")
+                return result
         
         except Exception as e:
-            logger.error(f"Failed to sync file {file.file_path} to container {container.id}: {e}")
+            logger.error(f"Failed to sync file {file.file_path} to container {container.id}: {e}", exc_info=True)
             return False
     
     async def sync_project_files_to_container(self, project_id: UUID, container: Container) -> Dict[str, Any]:
@@ -171,8 +182,38 @@ class FileContainerSync:
                             await self.db.commit()
                             sync_results['updated_files'] += 1
                     else:
-                        # Create new file
-                        # Note: This would need proper user context in real implementation
+                        # Create new file - we need to create the actual ProjectFile record
+                        from modules.backend.models.project_file import ProjectFile
+                        from modules.backend.services.file_utils import FileUtils
+                        import uuid
+                        from datetime import datetime
+                        
+                        # Get file info using FileUtils
+                        file_utils = FileUtils()
+                        file_info = file_utils.analyze_file_content(content, relative_path)
+                        
+                        # Create ProjectFile record
+                        new_file = ProjectFile(
+                            id=uuid.uuid4(),
+                            project_id=project_id,
+                            file_path=relative_path,
+                            file_name=file_info['file_name'],
+                            file_extension=file_info['file_extension'],
+                            file_type=file_info['file_type'],
+                            content=content,
+                            content_hash=file_info['content_hash'],
+                            file_size=file_info['file_size'],
+                            is_binary=file_info['is_binary'],
+                            encoding='utf-8',
+                            created_by=None,  # Container-synced files have no user
+                            updated_by=None,
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
+                            is_deleted=False
+                        )
+                        
+                        self.db.add(new_file)
+                        await self.db.commit()
                         sync_results['new_files'] += 1
                 
                 except Exception as e:
@@ -256,42 +297,53 @@ class FileContainerSync:
     
     async def _write_file_to_container(self, file: ProjectFile, container: Container, container_path: str) -> bool:
         """Write file content to container."""
+        logger.debug(f"_write_file_to_container called for: {container_path}")
         try:
             # Ensure directory exists
             directory = os.path.dirname(container_path)
             if directory:
-                await orbstack_client.execute_command(
+                logger.debug(f"Creating directory: {directory}")
+                mkdir_result = await orbstack_client.execute_command(
                     container.container_id,
                     f"mkdir -p '{directory}'"
                 )
+                logger.debug(f"mkdir result: {mkdir_result}")
             
             # Write file content
             # Note: Handle both base64-encoded and plain text content
             file_content = file.content or ''
+            logger.debug(f"File content preview (first 100 chars): {file_content[:100]}...")
+            logger.debug(f"File is_binary: {file.is_binary}")
             
             # Check if content is base64 encoded (from file uploads)
             if file.is_binary or self._is_base64_content(file_content):
+                logger.debug("Treating as binary/base64 content")
                 try:
                     # Decode base64 content
                     import base64
                     content_bytes = base64.b64decode(file_content)
-                except Exception:
+                    logger.debug(f"Successfully decoded base64, resulting in {len(content_bytes)} bytes")
+                except Exception as e:
                     # If decode fails, treat as plain text
+                    logger.debug(f"Base64 decode failed: {e}, treating as plain text")
                     content_bytes = file_content.encode('utf-8')
             else:
                 # Plain text content (from direct file creation)
+                logger.debug("Treating as plain text content")
                 content_bytes = file_content.encode('utf-8')
             
+            logger.debug(f"Uploading {len(content_bytes)} bytes to {container_path}")
             result = await orbstack_client.upload_file(
                 container.container_id,
                 container_path,
                 content_bytes
             )
+            logger.debug(f"Upload result: {result}")
             
             return result
         
         except Exception as e:
-            logger.error(f"Failed to write file to container: {e}")
+            logger.error(f"Failed to write file to container: {e}", exc_info=True)
             return False
     
     async def _remove_file_from_container(self, container: Container, container_path: str) -> bool:
@@ -325,19 +377,20 @@ class FileContainerSync:
     async def _list_container_files(self, container: Container, path: str = "/workspace") -> List[Dict[str, Any]]:
         """List files in container directory."""
         try:
-            result = await orbstack_client.execute_command(
+            # orbstack_client.execute_command returns (exit_code, output) tuple
+            exit_code, output = await orbstack_client.execute_command(
                 container.container_id,
-                f"find '{path}' -type f -exec stat --format='%n|%s|%Y' {{}} \\;"
+                ["find", path, "-type", "f", "-exec", "stat", "--format=%n|%s|%Y", "{}", ";"]
             )
             
-            if result.get('exit_code', 1) != 0:
+            if exit_code != 0:
+                logger.warning(f"Container file listing failed with exit code {exit_code}")
                 return []
             
             files = []
-            output = result.get('stdout', '')
             
             for line in output.strip().split('\n'):
-                if '|' in line:
+                if line and '|' in line:
                     parts = line.split('|')
                     if len(parts) >= 3:
                         files.append({
@@ -346,6 +399,7 @@ class FileContainerSync:
                             'modified_time': int(parts[2]) if parts[2].isdigit() else 0
                         })
             
+            logger.info(f"Found {len(files)} files in container {container.container_id}")
             return files
         
         except Exception as e:
@@ -354,13 +408,16 @@ class FileContainerSync:
     
     async def get_project_container(self, project_id: UUID) -> Optional[Container]:
         """Get the container for a project."""
+        logger.debug(f"Getting container for project: {project_id}")
         try:
             stmt = select(Container).where(Container.project_id == project_id)
             result = await self.db.execute(stmt)
-            return result.scalar_one_or_none()
+            container = result.scalar_one_or_none()
+            logger.debug(f"Found container: {container.id if container else 'None'}")
+            return container
         
         except Exception as e:
-            logger.error(f"Failed to get project container: {e}")
+            logger.error(f"Failed to get project container: {e}", exc_info=True)
             return None
     
     def _is_base64_content(self, content: str) -> bool:

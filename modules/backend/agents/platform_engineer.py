@@ -112,7 +112,7 @@ Always consider:
                 "error": str(e),
                 "agent": self.agent_type.value
             }
-
+    
     async def _handle_deployment_task(self, task: Task) -> Dict[str, Any]:
         """Handle deployment-specific tasks."""
         with log_operation("platform_deployment", task_id=str(task.id)):
@@ -274,8 +274,8 @@ Always consider:
             )
             
             await self.update_task_progress(task, 1.0, "Platform task complete")
-            
-            return {
+        
+        return {
                 "status": "completed",
                 "platform_solution": solution,
                 "agent": self.agent_type.value

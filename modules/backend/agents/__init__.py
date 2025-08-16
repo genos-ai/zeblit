@@ -6,7 +6,7 @@ to help users build applications.
 """
 
 from modules.backend.agents.base import BaseAgent, AgentMessage, AgentState
-from modules.backend.agents.dev_manager import DevManagerAgent
+from modules.backend.agents.project_manager import ProjectManagerAgent
 from modules.backend.agents.product_manager import ProductManagerAgent
 from modules.backend.agents.data_analyst import DataAnalystAgent
 from modules.backend.agents.engineer import EngineerAgent
@@ -19,7 +19,7 @@ __all__ = [
     "BaseAgent",
     "AgentMessage", 
     "AgentState",
-    "DevManagerAgent",
+    "ProjectManagerAgent",
     "ProductManagerAgent",
     "DataAnalystAgent",
     "EngineerAgent",

@@ -22,6 +22,7 @@ from rich.table import Table
 from zeblit_cli.config.settings import get_settings
 from zeblit_cli.auth.manager import get_auth_manager
 from zeblit_cli.api.client import ZeblitAPIClient, APIError
+from zeblit_cli.utils.encoding import MessageEncoder
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ async def retry_with_timeout(func, max_retries=2, timeout_increase=30):
 
 @click.group(invoke_without_command=True)
 @click.argument("message", nargs=-1, required=False)
-@click.option("--agent", "-a", help="Target specific agent (default: DevManager)")
+@click.option("--agent", "-a", help="Target specific agent (default: ProjectManager)")
 @click.option("--project", "-p", help="Project ID (uses current project if not specified)")
 @click.option("--quick", is_flag=True, help="Use fast model (Haiku) for quick responses")
 @click.option("--complex", is_flag=True, help="Use complex model (Opus) for deep thinking")
@@ -115,7 +116,7 @@ def chat_commands(ctx, message: tuple, agent: Optional[str], project: Optional[s
 
 @chat_commands.command("send")
 @click.argument("message", nargs=-1, required=True)
-@click.option("--agent", "-a", help="Target specific agent (default: DevManager)")
+@click.option("--agent", "-a", help="Target specific agent (default: ProjectManager)")
 @click.option("--project", "-p", help="Project ID (uses current project if not specified)")
 @click.option("--quick", is_flag=True, help="Use fast model (Haiku) for quick responses")
 @click.option("--complex", is_flag=True, help="Use complex model (Opus) for deep thinking")
@@ -130,6 +131,16 @@ async def send_message_cmd(message: str, agent: Optional[str], project_id: Optio
     try:
         auth_manager = get_auth_manager()
         settings = get_settings()
+        
+        # Check if debug mode is enabled
+        debug_mode = settings.debug
+        verbose_mode = settings.preferences.verbose_output
+        
+        if debug_mode:
+            console.print("[dim]🐛 Debug mode enabled[/dim]")
+            console.print(f"[dim]Project ID: {project_id or 'Using current project'}[/dim]")
+            console.print(f"[dim]Target agent: {agent or 'ProjectManager (default)'}[/dim]")
+            console.print(f"[dim]Model preference: {'quick' if quick else 'complex' if complex else 'default'}[/dim]")
         
         # Require authentication
         await auth_manager.require_auth()
@@ -146,14 +157,21 @@ async def send_message_cmd(message: str, agent: Optional[str], project_id: Optio
             auth_manager.set_api_client(api_client)
             
             # Show thinking indicator
-            console.print(f"💭 Sending to {agent or 'DevManager'}: [dim]{message[:100]}{'...' if len(message) > 100 else ''}[/dim]")
+            console.print(f"💭 Sending to {agent or 'ProjectManager'}: [dim]{message[:100]}{'...' if len(message) > 100 else ''}[/dim]")
+            
+            # Encode message for safe transmission
+            encoded_message = MessageEncoder.always_encode(message)
+            
+            if debug_mode:
+                console.print(f"[dim]🔐 Message encoded: {encoded_message[:50]}{'...' if len(encoded_message) > 50 else ''}[/dim]")
+                console.print(f"[dim]📍 API endpoint: /projects/{project_id}/chat[/dim]")
             
             # Define the chat function to retry
             async def make_chat_request():
                 with console.status("[bold blue]Agent is thinking..."):
                     return await api_client.chat_with_agents(
                         project_id=project_id,
-                        message=message,
+                        message=encoded_message,
                         target_agent=agent,
                         quick_model=quick,
                         complex_model=complex
@@ -163,6 +181,14 @@ async def send_message_cmd(message: str, agent: Optional[str], project_id: Optio
             response = await retry_with_timeout(make_chat_request, max_retries=2)
             
             if response:
+                if debug_mode:
+                    console.print(f"[dim]📥 Response received:[/dim]")
+                    console.print(f"[dim]   Agent: {response.get('agent_type', 'unknown')}[/dim]")
+                    console.print(f"[dim]   Agent ID: {response.get('agent_id', 'unknown')}[/dim]")
+                    console.print(f"[dim]   Timestamp: {response.get('timestamp', 'unknown')}[/dim]")
+                    if verbose_mode:
+                        console.print(f"[dim]   Full response: {response}[/dim]")
+                
                 # Display response
                 await display_agent_response(response)
             else:
@@ -327,7 +353,7 @@ async def list_agents_cmd(project_id: Optional[str]):
             
             agents = [
                 {
-                    "name": "DevManager", 
+                    "name": "ProjectManager", 
                     "role": "Development Manager", 
                     "description": "Routes requests and coordinates other agents",
                     "primary": True
@@ -383,10 +409,10 @@ async def list_agents_cmd(project_id: Optional[str]):
             console.print(table)
             
             console.print("\n💡 [bold]Usage:[/bold]")
-            console.print("  • [bold]zeblit chat 'your message'[/bold] - Send to DevManager (recommended)")
+            console.print("  • [bold]zeblit chat 'your message'[/bold] - Send to ProjectManager (recommended)")
             console.print("  • [bold]zeblit chat --agent Engineer 'your message'[/bold] - Send directly to specific agent")
             
-            console.print("\n🎯 [bold]Tip:[/bold] Start with DevManager - they'll route your request to the right specialist!")
+            console.print("\n🎯 [bold]Tip:[/bold] Start with ProjectManager - they'll route your request to the right specialist!")
             
     except Exception as e:
         console.print(f"[red]Error listing agents:[/red] {str(e)}")
@@ -395,7 +421,7 @@ async def list_agents_cmd(project_id: Optional[str]):
 # Convenient alias for main chat command
 @click.command()
 @click.argument("message", nargs=-1, required=True)
-@click.option("--agent", "-a", help="Target specific agent (default: DevManager)")
+@click.option("--agent", "-a", help="Target specific agent (default: ProjectManager)")
 @click.option("--project", "-p", help="Project ID (uses current project if not specified)")
 def chat_main(message: tuple, agent: Optional[str], project: Optional[str]):
     """Send a message to project agents (main chat command)."""

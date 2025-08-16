@@ -111,11 +111,11 @@ async def create_ai_agents(session: AsyncSession):
     
     agents_data = [
         {
-            "agent_type": AgentType.DEV_MANAGER,
-            "name": "Development Manager",
-            "display_name": "DevOps Manager",
-            "description": "Orchestrates development workflow and coordinates between all agents",
-            "system_prompt": """You are the Development Manager for an AI development platform. Your role is to:
+            "agent_type": AgentType.PROJECT_MANAGER,
+            "name": "Project Manager",
+            "display_name": "Project Manager",
+            "description": "Orchestrates project workflow and coordinates between all agents",
+            "system_prompt": """You are the Project Manager for an AI development platform. Your role is to:
 
 1. Analyze user requirements and break them down into actionable tasks
 2. Coordinate work between different AI agents (PM, Engineer, Architect, etc.)
