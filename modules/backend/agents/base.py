@@ -28,6 +28,7 @@ from modules.backend.models.task import Task, TaskStatus
 from modules.backend.models.conversation import Conversation, AgentMessage as AgentMessageModel
 from modules.backend.config.logging_config import get_logger, log_operation
 from modules.backend.core.model_selector import ModelSelector, ModelTier
+from modules.backend.services.agent_file_service import AgentFileService
 from modules.backend.services.task import TaskService
 from modules.backend.services.conversation import ConversationService
 from modules.backend.services.git import GitService
@@ -285,6 +286,64 @@ class BaseAgent(ABC):
         )
         
         return response
+    
+    async def create_file(
+        self,
+        project_id: UUID,
+        file_path: str,
+        content: str,
+        user,
+        file_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a file in the project on behalf of the user.
+        
+        Args:
+            project_id: Project ID where file will be created
+            file_path: Relative path for the new file
+            content: File content to write
+            user: User on whose behalf the agent is acting
+            file_type: Optional file type hint
+            
+        Returns:
+            File creation result
+        """
+        with log_operation("agent_create_file", agent_type=self.agent_type.value, file_path=file_path):
+            try:
+                # Use the agent's existing database session
+                file_service = AgentFileService(self.db_session)
+                
+                result = await file_service.create_file_for_agent(
+                    project_id=project_id,
+                    file_path=file_path,
+                    content=content,
+                    user=user,
+                    agent_name=f"{self.agent_type.value} Agent",
+                    file_type=file_type
+                )
+                
+                logger.info(
+                    "Agent file creation completed",
+                    agent_type=self.agent_type.value,
+                    file_path=file_path,
+                    success=result['success']
+                )
+                
+                return result
+                
+            except Exception as e:
+                logger.error(
+                    "Agent file creation failed",
+                    agent_type=self.agent_type.value,
+                    file_path=file_path,
+                    error=str(e)
+                )
+                return {
+                    'success': False,
+                    'error': str(e),
+                    'file_path': file_path,
+                    'message': f"Failed to create file: {str(e)}"
+                }
     
     async def update_task_progress(
         self,

@@ -57,9 +57,23 @@ class FileService:
         metadata: Optional[Dict[str, Any]] = None
     ) -> ProjectFile:
         """Create a new file in a project."""
-        return await self.operations.create_file(
+        # Create file in database first
+        project_file = await self.operations.create_file(
             project_id, file_path, content, user, encoding, metadata
         )
+        
+        # Sync the file to the project container
+        try:
+            sync_result = await self.sync_file_to_container(project_file, None, 'create')
+            if sync_result:
+                logger.info(f"File {file_path} synced to container successfully")
+            else:
+                logger.warning(f"File {file_path} created in DB but sync to container failed")
+        except Exception as e:
+            logger.error(f"Error syncing file {file_path} to container: {str(e)}")
+            # Don't fail the file creation if sync fails - file exists in DB
+        
+        return project_file
     
     async def read_file(
         self, 

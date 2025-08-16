@@ -109,7 +109,8 @@ class FileOperations:
             'encoding': encoding,
             'created_by': user.id,
             'updated_by': user.id,
-            'file_metadata': metadata or {}
+            # Note: metadata is not stored as ProjectFile model doesn't have file_metadata field
+            # 'file_metadata': metadata or {}
         }
         
         project_file = await self.file_repo.create(**file_data)
@@ -117,12 +118,12 @@ class FileOperations:
         # Perform security scan
         scan_result = await self.security_scanner.scan_file_for_secrets(project_file)
         if scan_result['has_secrets']:
-            # Store security scan results in metadata
-            project_file.file_metadata = {
-                **(project_file.file_metadata or {}),
+            # Store security scan results in ai_analysis_result (since no file_metadata field exists)
+            project_file.ai_analysis_result = {
+                **(project_file.ai_analysis_result or {}),
                 'security_scan': scan_result
             }
-            await self.file_repo.update(project_file.id, file_metadata=project_file.file_metadata)
+            await self.file_repo.update(project_file.id, ai_analysis_result=project_file.ai_analysis_result)
         
         # Clear cache
         await self._clear_project_cache(project_id)
