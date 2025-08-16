@@ -203,8 +203,13 @@ async def display_agent_response(response: dict):
     
     # Show routing information if available
     routing = response.get("routing", {})
-    if routing and settings.preferences.verbose_output:
-        console.print(f"[dim]Routed via: {routing.get('path', 'direct')}[/dim]")
+    try:
+        settings = get_settings()
+        if routing and settings.preferences.verbose_output:
+            console.print(f"[dim]Routed via: {routing.get('path', 'direct')}[/dim]")
+    except:
+        # Skip routing info if settings unavailable
+        pass
 
 
 @chat_commands.command("history")
