@@ -98,6 +98,7 @@ class OrbStackClient:
         memory_limit: int = 4096,
         disk_limit: int = 10240,
         environment_vars: Optional[Dict[str, str]] = None,
+        project_name: Optional[str] = None,
         volumes: Optional[List[Dict[str, Any]]] = None,
         ports: Optional[Dict[str, int]] = None
     ) -> Tuple[str, str]:
@@ -118,8 +119,14 @@ class OrbStackClient:
             Tuple of (container_id, container_name)
         """
         try:
-            # Generate container name
-            container_name = f"ai-dev-{project_id[:8]}-{user_id[:8]}"
+            # Generate container name with zeblit_ prefix
+            if project_name:
+                # Sanitize project name for container naming
+                sanitized_name = self._sanitize_name(project_name)
+                container_name = f"zeblit_{sanitized_name}_{project_id[:8]}"
+            else:
+                # Fallback to project ID if no name available
+                container_name = f"zeblit_project_{project_id[:8]}"
             
             # Prepare environment
             env = {
@@ -141,7 +148,7 @@ class OrbStackClient:
                     }
             
             # Add default workspace volume
-            workspace_volume = f"ai-workspace-{project_id}"
+            workspace_volume = f"zeblit_vol_{project_id[:8]}"
             volume_binds[workspace_volume] = {
                 'bind': '/workspace',
                 'mode': 'rw'
@@ -767,6 +774,29 @@ class OrbStackClient:
         
         if remaining and isinstance(tree[current], dict):
             self._add_to_tree(tree[current], remaining)
+    
+    def _sanitize_name(self, name: str) -> str:
+        """
+        Sanitize project name for use in container/volume names.
+        
+        Docker names must be [a-zA-Z0-9][a-zA-Z0-9_.-]*
+        """
+        import re
+        
+        # Convert to lowercase and replace spaces/special chars with underscores
+        sanitized = re.sub(r'[^a-zA-Z0-9_.-]', '_', name.lower())
+        
+        # Ensure it starts with alphanumeric
+        if sanitized and not sanitized[0].isalnum():
+            sanitized = 'p' + sanitized
+        
+        # Limit length to reasonable size
+        sanitized = sanitized[:20]
+        
+        # Remove trailing special chars
+        sanitized = sanitized.rstrip('_.-')
+        
+        return sanitized or 'project'
 
 
 # Global OrbStack client instance

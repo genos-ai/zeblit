@@ -8,6 +8,6 @@ Author: Zeblit Team
 - 1.0.0 (2024-01-08): Initial integrations module
 """
 
-from .orbstack import orbstack_client
+from modules.backend.core.orbstack_client import orbstack_client
 
 __all__ = ["orbstack_client"] 

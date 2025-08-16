@@ -692,7 +692,7 @@ class ProjectService:
         """
         from sqlalchemy import select
         from modules.backend.models.container import Container
-        from modules.backend.integrations.orbstack import orbstack_client
+        from modules.backend.core.orbstack_client import orbstack_client
         
         try:
             # Get all containers for this project from database
@@ -724,6 +724,9 @@ class ProjectService:
             # Also clean up any orphaned containers that might not be in the database
             await self._cleanup_orphaned_containers(project_id)
             
+            # Clean up project volumes
+            await self._cleanup_project_volumes(project_id)
+            
         except Exception as e:
             logger.error(f"Error during physical container cleanup: {str(e)}")
             # Don't re-raise here - continue with database cleanup
@@ -738,9 +741,9 @@ class ProjectService:
         try:
             import subprocess
             
-            # Get container name pattern for this project
+            # Get container name pattern for this project  
             project_short = str(project_id)[:8]  # First 8 chars of UUID
-            container_pattern = f"ai-dev-{project_short}"
+            container_pattern = f"zeblit_*_{project_short}"
             
             logger.info(f"Checking for orphaned containers matching pattern: {container_pattern}")
             
@@ -773,4 +776,53 @@ class ProjectService:
                             logger.warning(f"Failed to remove orphaned container {container_name}: {e}")
             
         except Exception as e:
-            logger.warning(f"Error checking for orphaned containers: {e}") 
+            logger.warning(f"Error checking for orphaned containers: {e}")
+    
+    async def _cleanup_project_volumes(self, project_id: UUID) -> None:
+        """
+        Clean up Docker volumes associated with a project.
+        
+        Args:
+            project_id: Project ID to find volumes for
+        """
+        try:
+            import subprocess
+            
+            # Get volume name pattern for this project  
+            project_short = str(project_id)[:8]  # First 8 chars of UUID
+            volume_pattern = f"zeblit_vol_{project_short}"
+            
+            logger.info(f"Checking for project volumes matching pattern: {volume_pattern}")
+            
+            # List all Docker volumes matching pattern
+            result = subprocess.run(
+                ["docker", "volume", "ls", "--filter", f"name={volume_pattern}", "--format", "{{.Name}}"],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0 and result.stdout.strip():
+                volumes = result.stdout.strip().split('\n')
+                
+                for volume_name in volumes:
+                    if volume_name.strip():
+                        try:
+                            logger.info(f"Removing project volume: {volume_name}")
+                            
+                            # Remove volume
+                            subprocess.run(
+                                ["docker", "volume", "rm", volume_name],
+                                capture_output=True,
+                                timeout=30
+                            )
+                            
+                            logger.info(f"Successfully removed volume: {volume_name}")
+                            
+                        except Exception as e:
+                            logger.warning(f"Failed to remove volume {volume_name}: {e}")
+            else:
+                logger.info(f"No volumes found matching pattern: {volume_pattern}")
+            
+        except Exception as e:
+            logger.warning(f"Error checking for project volumes: {e}") 

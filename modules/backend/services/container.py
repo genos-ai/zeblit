@@ -146,7 +146,8 @@ class ContainerService:
                 cpu_limit=cpu,
                 memory_limit=memory,
                 disk_limit=disk,
-                environment_vars=environment_vars
+                environment_vars=environment_vars,
+                project_name=project.name
             )
             
             # Create database record
