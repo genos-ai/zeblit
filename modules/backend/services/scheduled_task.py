@@ -44,7 +44,7 @@ class ScheduledTaskService:
         self.task_repo = ScheduledTaskRepository(db)
         self.run_repo = ScheduledTaskRunRepository(db)
         self.project_repo = ProjectRepository(db)
-        self.container_service = ContainerService(db)
+        self.container_service = ContainerService()
     
     async def create_task(
         self,
@@ -113,7 +113,7 @@ class ScheduledTaskService:
             raise ValidationError(f"Task with name '{name}' already exists in this project")
         
         # Create task
-        task = ScheduledTask(
+        created_task = await self.task_repo.create(
             name=name,
             description=description,
             user_id=user.id,
@@ -129,8 +129,6 @@ class ScheduledTaskService:
             notify_on_failure=notify_on_failure,
             notify_on_success=notify_on_success
         )
-        
-        created_task = await self.task_repo.create(task)
         
         # Schedule with Celery Beat (implementation below)
         await self._schedule_with_celery(created_task)
@@ -298,13 +296,11 @@ class ScheduledTaskService:
             return
         
         # Create run record
-        run = ScheduledTaskRun(
+        created_run = await self.run_repo.create(
             task_id=task_id,
             retry_attempt=str(retry_attempt),
             status="running"
         )
-        
-        created_run = await self.run_repo.create(run)
         
         try:
             # Execute in container

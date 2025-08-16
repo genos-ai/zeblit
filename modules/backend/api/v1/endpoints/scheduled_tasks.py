@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from modules.backend.core.database import get_db
-from modules.backend.core.dependencies import get_current_user
+from modules.backend.core.dependencies import get_current_user_multi_auth
 from modules.backend.models.user import User
 from modules.backend.schemas.scheduled_task import (
     ScheduledTaskCreate,
@@ -48,7 +48,7 @@ router = APIRouter(
 @router.post("/", response_model=ScheduledTaskRead)
 async def create_scheduled_task(
     task_data: ScheduledTaskCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -89,7 +89,7 @@ async def create_scheduled_task(
 @router.post("/quick", response_model=ScheduledTaskRead)
 async def create_quick_task(
     task_data: TaskQuickCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -125,7 +125,7 @@ async def create_quick_task(
 async def list_scheduled_tasks(
     project_id: Optional[UUID] = Query(None, description="Filter by project ID"),
     enabled_only: bool = Query(False, description="Only return enabled tasks"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -155,7 +155,7 @@ async def list_scheduled_tasks(
 async def list_project_tasks(
     project_id: UUID,
     enabled_only: bool = Query(False, description="Only return enabled tasks"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -188,7 +188,7 @@ async def get_scheduled_task(
     task_id: UUID,
     include_runs: bool = Query(True, description="Include execution history"),
     run_limit: int = Query(50, ge=1, le=200, description="Maximum runs to include"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -229,7 +229,7 @@ async def get_scheduled_task(
 async def update_scheduled_task(
     task_id: UUID,
     task_update: ScheduledTaskUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -264,7 +264,7 @@ async def update_scheduled_task(
 @router.delete("/{task_id}")
 async def delete_scheduled_task(
     task_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -301,7 +301,7 @@ async def delete_scheduled_task(
 @router.post("/{task_id}/execute")
 async def execute_task_now(
     task_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -342,7 +342,7 @@ async def execute_task_now(
 @router.post("/{task_id}/enable")
 async def enable_task(
     task_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Enable a scheduled task."""
@@ -368,7 +368,7 @@ async def enable_task(
 @router.post("/{task_id}/disable")
 async def disable_task(
     task_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """Disable a scheduled task."""
@@ -394,7 +394,7 @@ async def disable_task(
 @router.post("/validate-schedule", response_model=ScheduleValidationResponse)
 async def validate_schedule(
     schedule_data: ScheduleValidationRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_multi_auth)
 ):
     """
     Validate a cron schedule expression.
@@ -449,7 +449,7 @@ async def validate_schedule(
 @router.post("/bulk-operations")
 async def bulk_task_operations(
     operation_data: BulkTaskOperation,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -513,7 +513,7 @@ async def bulk_task_operations(
 @router.get("/stats/overview", response_model=ScheduledTaskStats)
 async def get_task_stats(
     project_id: Optional[UUID] = Query(None, description="Filter by project"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_multi_auth),
     db: AsyncSession = Depends(get_db)
 ):
     """

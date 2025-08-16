@@ -180,7 +180,8 @@ async def list_tasks_cmd(project_id: Optional[str], enabled_only: bool):
                 params["enabled_only"] = "true"
             
             tasks = await api_client._request("GET", "/scheduled-tasks/", params=params)
-            task_list = tasks.get("data", tasks)
+            # API returns list directly, not wrapped in data object
+            task_list = tasks if isinstance(tasks, list) else tasks.get("data", tasks)
             
             if not task_list:
                 console.print("📋 No scheduled tasks found")
